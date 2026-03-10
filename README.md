@@ -20,3 +20,8 @@ Nama  = Muhamad Rafli Ar Rauf
 Id    = veloraalteir
 
 Manager = Muhammad Rizqi Sholahuddin,S.Si.,M.T
+
+# Penugasan
+1. Immanoel  = New file, Copy, Paste, Redo, Undo
+2. Rafli     = Open file, Close file, Save, Save as
+3. Fauzan    = Find, Replace, Error Handling
