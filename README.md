@@ -5,6 +5,8 @@ Ini adalah Repository yang berisi text editor buatan sendiri dengan bahasa pemro
 3. Cara pakai (sertakan contoh atau gambar atau video (tidak wajib))
 4. Identitas (NIM, Nama, ID, dan Manager)
 
+# Instalisasi
+
 
 # Identitas
 NIM   = 251511038
