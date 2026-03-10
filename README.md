@@ -6,15 +6,17 @@ Ini adalah Repository yang berisi text editor buatan sendiri dengan bahasa pemro
 4. Identitas (NIM, Nama, ID, dan Manager)
 
 
+# Identitas
+NIM   = 251511038
+Nama  = Fauzan Fadillah
+Id    = MiawGit
 
-251511038
-Fauzan Fadillah
-MiawGit
+NIM   = 251511042
+Nama  = Immanoel (Ketua)
+Id    = tiranui
 
-251511042
-Immanoel
-tiranui
+NIM   = 251511047
+Nama  = Muhamad Rafli Ar Rauf
+Id    = veloraalteir
 
-251511047
-Muhamad Rafli Ar Rauf
-veloraalteir
+Manager = Muhammad Rizqi Sholahuddin,S.Si.,M.T
