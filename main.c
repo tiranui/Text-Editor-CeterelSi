@@ -105,3 +105,88 @@ void editorRefreshScreen() {
         printf("========================\n");
     }
 }
+// ================= CURSOR =================
+void moveCursor(int key) {
+    int len = strlen(text[cy]);
+
+    switch (key) {
+        case ARROW_UP:
+            if (cy > 0) cy--;
+            break;
+
+        case ARROW_DOWN:
+            if (cy < line_count - 1) cy++;
+            break;
+
+        case ARROW_LEFT:
+            if (cx > 0) cx--;
+            break;
+
+        case ARROW_RIGHT:
+            if (cx < len) cx++;
+            break;
+
+        case PAGE_UP:
+            cy -= VIEW_HEIGHT;
+            if (cy < 0) cy = 0;
+            break;
+
+        case PAGE_DOWN:
+            cy += VIEW_HEIGHT;
+            if (cy >= line_count) cy = line_count - 1;
+            break;
+    }
+
+    if (cx > strlen(text[cy])) {
+        cx = strlen(text[cy]);
+    }
+
+    if (cy < row_offset) row_offset = cy;
+    if (cy >= row_offset + VIEW_HEIGHT) {
+        row_offset = cy - VIEW_HEIGHT + 1;
+    }
+}
+
+// ================= EDIT =================
+void insertChar(char c) {
+    int len = strlen(text[cy]);
+    int i;
+
+    if (len >= MAX_LENGTH - 1) return;
+
+    for (i = len; i >= cx; i--) {
+        text[cy][i + 1] = text[cy][i];
+    }
+
+    text[cy][cx] = c;
+    cx++;
+}
+
+void insertNewLine() {
+    int i;
+
+    if (line_count >= MAX_LINES) return;
+
+    for (i = line_count; i > cy + 1; i--) {
+        strcpy(text[i], text[i - 1]);
+    }
+
+    strcpy(text[cy + 1], text[cy] + cx);
+    text[cy][cx] = '\0';
+
+    line_count++;
+    cy++;
+    cx = 0;
+}
+
+void deleteChar() {
+    int len = strlen(text[cy]);
+    int i;
+
+    if (cx > 0) {
+        for (i = cx - 1; i < len; i++) {
+            text[cy][i] = text[cy][i + 1];
+        }
+        cx--;
+    }
+}
