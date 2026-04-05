@@ -1,6 +1,9 @@
+/*Library*/
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <conio.h>
 
-int main() {
-    printf("Hello world");
-    return 0;
-}
+#define MAX_LINES 1000
+#define MAX_LENGTH 256
+#define VIEW_HEIGHT 20
