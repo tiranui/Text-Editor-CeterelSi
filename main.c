@@ -1,4 +1,5 @@
-#include "Rafli.h"
+#include "noel.h"
+
 /*Program*/
 /* Data Teks*/
 char text[MAX_LINES][MAX_LENGTH];
@@ -10,7 +11,8 @@ int cx = 0, cy = 0;
 int row_offset = 0;
 
 int mode = 0; // 0 = EDIT, 1 = COMMAND
-/*Page up & Page up*/
+
+/*Page up & Page down*/
 // ================= KEY =================
 enum keys {
     ARROW_UP = 1000,
@@ -20,6 +22,7 @@ enum keys {
     PAGE_UP,
     PAGE_DOWN
 };
+
 /*Input Keyboard*/
 int readKey() {
     int c = getch();
@@ -39,6 +42,7 @@ int readKey() {
 
     return c;
 }
+
 /*Display Program*/
 // ================= DISPLAY =================
 void clearScreen() {
@@ -89,14 +93,16 @@ void editorRefreshScreen() {
     } else {
         printf("\n===== COMMAND LIST =====\n");
         printf("I  : Kembali ke Edit Mode\n");
-        printf("O  : Open File\n");
-        printf("S  : Save File\n");
-        printf("A  : Save As\n");
-        printf("C  : Close File\n");
+        printf("N  : New File\n");
+        printf("Y  : Copy Baris (Menyesuaikan dengan Kursor)\n");
+        printf("P  : Paste\n");
+        printf("Z  : Undo\n");
+        printf("R  : Redo\n");
         printf("Q  : Quit\n");
         printf("========================\n");
     }
 }
+
 /*Program edit dan move cursor*/
 // ================= CURSOR =================
 void moveCursor(int key) {
@@ -147,6 +153,8 @@ void insertChar(char c) {
 
     if (len >= MAX_LENGTH - 1) return;
 
+    pushUndo();
+
     for (i = len; i >= cx; i--) {
         text[cy][i + 1] = text[cy][i];
     }
@@ -159,6 +167,8 @@ void insertNewLine() {
     int i;
 
     if (line_count >= MAX_LINES) return;
+
+    pushUndo();
 
     for (i = line_count; i > cy + 1; i--) {
         strcpy(text[i], text[i - 1]);
@@ -177,12 +187,15 @@ void deleteChar() {
     int i;
 
     if (cx > 0) {
+        pushUndo();
+
         for (i = cx - 1; i < len; i++) {
             text[cy][i] = text[cy][i + 1];
         }
         cx--;
     }
 }
+
 /*main program*/
 /*================= MAIN =================*/
 int main() {
@@ -191,8 +204,9 @@ int main() {
     text[0][0] = '\0';
     int i;
     for (i = 0; i < MAX_LINES; i++) {
-    text[i][0] = '\0';
-}
+        text[i][0] = '\0';
+    }
+
     while (1) {
         editorRefreshScreen();
         key = readKey();
@@ -220,25 +234,31 @@ int main() {
                     mode = 0;
                     break;
 
-                case 'o':
-                case 'O':
-                    openFile();
+                case 'n':
+                case 'N':
+                    newFile();
                     mode = 0;
                     break;
 
-                case 's':
-                case 'S':
-                    saveFile();
+                case 'y':
+                case 'Y':
+                    copyLine();
                     break;
 
-                case 'a':
-                case 'A':
-                    saveAs();
+
+                case 'p':
+                case 'P':
+                    pasteLine();
                     break;
 
-                case 'c':
-                case 'C':
-                    closeFile();
+                case 'z':
+                case 'Z':
+                    undoAction();
+                    break;
+
+                case 'r':
+                case 'R':
+                    redoAction();
                     break;
 
                 case 'q':
