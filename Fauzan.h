@@ -5,12 +5,10 @@
 #include <string.h>
 #include <conio.h>
 
-// ambil dari main
-// extern char text[MAX_LINES][MAX_LENGTH];
-// extern int line_count;
-
-// fungsi
+// Bagian Find
 void findText();
+
+// Bagian Replace
 void replaceText();
 
 #endif
