@@ -1,8 +1,6 @@
 #include "Rafli.h"
 
-// ================= FILE =================
-
-// OPEN FILE
+// ===== Fitur Open File =====
 void openFile() {
     char filename[100];
     FILE *fp;
@@ -58,7 +56,7 @@ void openFile() {
     }
 }
 
-// SAVE FILE
+// ===== Save File =====
 void saveFile() {
     int i;
     FILE *fp;
@@ -83,7 +81,7 @@ void saveFile() {
     fclose(fp);
 }
 
-// SAVE AS
+// ===== Fitur Save As =====
 void saveAs() {
     int i;
     char filename[100];
@@ -116,7 +114,7 @@ void saveAs() {
     strcpy(currentFile, filename);
 }
 
-// CLOSE FILE
+// ===== Fitur Close File =====
 void closeFile() {
     line_count = 1;
     text[0][0] = '\0';
