@@ -22,9 +22,30 @@ Ini adalah Repository yang berisi text editor buatan sendiri dengan bahasa pemro
 4. didalam cmd kamu ketik (gcc main.c Rafli.c Fauzan.c noel.c -o main.exe)
 5. jika sudah tinggal ketik main.exe
 
+## Setup Environment (Device)
+
+Untuk menjalankan project ini, dibutuhkan:
+
+- _Sistem Operasi aplikasi_:
+  - Windows
+
+- _Tools yang dipakai_:
+
+## 🛠️ Setup Environment
+
+Sebelum Project dimulai alangkah baiknya untuk mengunduh Tools tools berikut:
+
+| Tool               | Keterangan                                         | Link Download                  |
+| ------------------ | -------------------------------------------------- | ------------------------------ |
+| Git                | Digunakan untuk clone repository                   | https://git-scm.com/           |
+| MSYS2 / MinGW64    | Environment dan compiler untuk menjalankan program | https://www.msys2.org/         |
+| Visual Studio Code | Code editor untuk menulis dan mengedit program     | https://code.visualstudio.com/ |
+
 # Instalasi
 
 harus menginstal gcc untuk aplikasi bisa dijalankan
+https://sourceforge.net/projects/gcc-win64/
+https://code.visualstudio.com/docs/cpp/config-mingw
 
 # Identitas
 
