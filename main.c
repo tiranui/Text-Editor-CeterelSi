@@ -81,7 +81,7 @@ void editorRefreshScreen() {
         printf("\033[KESC = Command Mode\n");
     } else {
         printf("\033[KI: Edit  O: Open   S: Save  A: SaveAs  N: New\n");
-        printf("\033[KF: Find  R: Rplc   C: Close Q: Quit\n");
+        printf("\033[KF: Find  R: Replace   C: Close Q: Quit\n");
         printf("\033[KY: Copy  P: Paste  U: Undo  E: Redo\n");
     }
 
