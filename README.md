@@ -9,10 +9,12 @@ Ini adalah Repository yang berisi text editor buatan sendiri dengan bahasa pemro
 
 # Cara Set Up aplikasi di vs code
 
-1. clone github menggunakan perintah (git clone https://github.com/tiranui/Text-Editor-CeterelSi.git)
-2. setelah diclone tekan ctrl+shift ~ (untuk membuka terminal)
-3. ketik (gcc main.c Rafli.c Fauzan.c noel.c -o main.exe) pastikan anda sudah menginstal gcc
-4. kalau sudah, ketik .\main.exe
+1. Buka Visual Studio Code. 
+2. Tekan ctrl+shift+~ (untuk membuka terminal)
+3. Kemudian, clone github menggunakan perintah (git clone https://github.com/tiranuiText-Editor-CeterelSi.git)
+4. Lalu, ketik (gcc main.c Rafli.c Fauzan.c noel.c -o main.exe) pastikan anda sudah menginstal gcc
+5. Jika sudah, maka langkah terakhir adalah ketik (.\main.exe)
+6. Selesai
 
 # set up aplikasi di cmd
 
