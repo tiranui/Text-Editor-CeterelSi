@@ -1,6 +1,8 @@
 #include "Rafli.h"
-/*Program*/
-/* Data Teks*/
+#include "Fauzan.h"
+#include "noel.h"
+
+/* Data Teks */
 char text[MAX_LINES][MAX_LENGTH];
 int line_count = 1;
 
@@ -10,7 +12,7 @@ int cx = 0, cy = 0;
 int row_offset = 0;
 
 int mode = 0; // 0 = EDIT, 1 = COMMAND
-/*Page up & Page up*/
+
 // ================= KEY =================
 enum keys {
     ARROW_UP = 1000,
@@ -20,7 +22,8 @@ enum keys {
     PAGE_UP,
     PAGE_DOWN
 };
-/*Input Keyboard*/
+
+// ================= INPUT =================
 int readKey() {
     int c = getch();
 
@@ -39,25 +42,29 @@ int readKey() {
 
     return c;
 }
-/*Display Program*/
-// ================= DISPLAY =================
+
+// ================= DISPLAY (DIPERBAIKI) =================
 void clearScreen() {
-    system("cls");
+    // Pindahkan kursor ke pojok kiri atas tanpa menghapus seluruh frame (mencegah flicker)
+    printf("\033[H");
 }
 
 void printLineWithCursor(int row) {
     int i;
     int len = strlen(text[row]);
 
-    printf("%3d | ", row + 1);
+    // \033[K membersihkan sisa teks di kanan kursor jika panjang baris berkurang
+    printf("\033[K  "); 
 
-    for (i = 0; i <= len; i++) {
+    for (i = 0; i < len; i++) {
         if (row == cy && i == cx) {
             printf("|");
         }
-        if (i < len) {
-            printf("%c", text[row][i]);
-        }
+        printf("%c", text[row][i]);
+    }
+
+    if (row == cy && cx == len) {
+        printf("|");
     }
 
     printf("\n");
@@ -66,38 +73,43 @@ void printLineWithCursor(int row) {
 void editorRefreshScreen() {
     int i;
 
+    // \033[?25l menyembunyikan kursor asli terminal agar tidak ada kursor ganda
+    printf("\033[?25l"); 
     clearScreen();
 
-    printf("===== MINI NOTEPAD =====\n");
-    printf("File: %s\n", strlen(currentFile) ? currentFile : "(None)");
-    printf("MODE: %s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
-    printf("========================\n\n");
+    // Tambahkan \033[K di setiap baris UI agar tidak ada sisa karakter dari frame sebelumnya
+    printf("\033[K===== MINI NOTEPAD =====\n");
+    printf("\033[KFile: %s\n", strlen(currentFile) ? currentFile : "(None)");
+    printf("\033[KMODE: %s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
+    printf("\033[K\n\033[K========================\n");
+
+    if (mode == 0) {
+        printf("\033[KESC = Command Mode\n");
+    } else {
+        // UI diupdate untuk menampilkan opsi baru dari noel.c
+        printf("\033[KI: Edit  O: Open   S: Save  A: SaveAs  N: New\n");
+        printf("\033[KF: Find  R: Rplc   C: Close Q: Quit\n");
+        printf("\033[KY: Copy  P: Paste  U: Undo  E: Redo\n");
+    }
+
+    printf("\033[K----------------------------------\n");
 
     for (i = 0; i < VIEW_HEIGHT; i++) {
         int fileRow = i + row_offset;
 
         if (fileRow >= line_count) {
-            printf("~\n");
+            printf("\033[K\n");
         } else {
             printLineWithCursor(fileRow);
         }
     }
 
-    // COMMAND LIST DINAMIS
-    if (mode == 0) {
-        printf("\nESC = Command Mode\n");
-    } else {
-        printf("\n===== COMMAND LIST =====\n");
-        printf("I  : Kembali ke Edit Mode\n");
-        printf("O  : Open File\n");
-        printf("S  : Save File\n");
-        printf("A  : Save As\n");
-        printf("C  : Close File\n");
-        printf("Q  : Quit\n");
-        printf("========================\n");
-    }
+    // \033[J membersihkan sisa baris terminal di bawah area teks editor
+    printf("\033[J"); 
+
+    fflush(stdout);
 }
-/*Program edit dan move cursor*/
+
 // ================= CURSOR =================
 void moveCursor(int key) {
     int len = strlen(text[cy]);
@@ -130,7 +142,7 @@ void moveCursor(int key) {
             break;
     }
 
-    if (cx > strlen(text[cy])) {
+    if (cx > (int)strlen(text[cy])) {
         cx = strlen(text[cy]);
     }
 
@@ -147,18 +159,26 @@ void insertChar(char c) {
 
     if (len >= MAX_LENGTH - 1) return;
 
+    // Simpan status sebelum diubah untuk fitur UNDO
+    pushUndo();
+
     for (i = len; i >= cx; i--) {
         text[cy][i + 1] = text[cy][i];
     }
 
     text[cy][cx] = c;
     cx++;
+
+    text[cy][len + 1] = '\0';
 }
 
 void insertNewLine() {
     int i;
 
     if (line_count >= MAX_LINES) return;
+
+    // Simpan status sebelum membuat baris baru
+    pushUndo();
 
     for (i = line_count; i > cy + 1; i--) {
         strcpy(text[i], text[i - 1]);
@@ -177,22 +197,27 @@ void deleteChar() {
     int i;
 
     if (cx > 0) {
+        // Simpan status sebelum menghapus karakter
+        pushUndo();
+
         for (i = cx - 1; i < len; i++) {
             text[cy][i] = text[cy][i + 1];
         }
         cx--;
+
+        text[cy][len - 1] = '\0';
     }
 }
-/*main program*/
-/*================= MAIN =================*/
+
+// ================= MAIN =================
 int main() {
     int key;
-
-    text[0][0] = '\0';
     int i;
+
     for (i = 0; i < MAX_LINES; i++) {
-    text[i][0] = '\0';
-}
+        text[i][0] = '\0';
+    }
+
     while (1) {
         editorRefreshScreen();
         key = readKey();
@@ -215,34 +240,60 @@ int main() {
             }
         } else {
             switch (key) {
-                case 'i':
-                case 'I':
+                case 'i': case 'I':
                     mode = 0;
                     break;
 
-                case 'o':
-                case 'O':
-                    openFile();
+                case 'o': case 'O':
+                    openFile();     // Pastikan ini ada di header lain
                     mode = 0;
                     break;
 
-                case 's':
-                case 'S':
-                    saveFile();
+                case 's': case 'S':
+                    saveFile();     // Pastikan ini ada di header lain
                     break;
 
-                case 'a':
-                case 'A':
-                    saveAs();
+                case 'a': case 'A':
+                    saveAs();       // Pastikan ini ada di header lain
                     break;
 
-                case 'c':
-                case 'C':
-                    closeFile();
+                case 'f': case 'F':
+                    findText();     // Pastikan ini ada di header lain
                     break;
 
-                case 'q':
-                case 'Q':
+                case 'r': case 'R':
+                    replaceText();  // Pastikan ini ada di header lain
+                    break;
+
+                case 'c': case 'C':
+                    closeFile();    // Pastikan ini ada di header lain
+                    break;
+
+                // --- FITUR TAMBAHAN DARI NOEL.C ---
+                case 'n': case 'N':
+                    newFile();
+                    break;
+
+                case 'y': case 'Y': // Menggunakan Y (Yank) untuk Copy, karena C dipakai Close
+                    copyLine();
+                    break;
+
+                case 'p': case 'P':
+                    pasteLine();
+                    break;
+
+                case 'u': case 'U':
+                    undoAction();
+                    break;
+
+                case 'e': case 'E': // Menggunakan E untuk Redo
+                    redoAction();
+                    break;
+                // ----------------------------------
+
+                case 'q': case 'Q':
+                    // \033[?25h memunculkan kembali kursor asli terminal sebelum keluar
+                    printf("\033[?25h"); 
                     return 0;
             }
         }
