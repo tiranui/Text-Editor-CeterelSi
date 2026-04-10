@@ -1,7 +1,7 @@
 #include "Rafli.h"
 #include "Fauzan.h"
 
-// ================= FIND =================
+// ===== Fitur Find =====
 void findText() {
     char keyword[100];
     int i, found = 0;
@@ -26,7 +26,7 @@ void findText() {
     getch();
 }
 
-// ================= REPLACE =================
+// ===== Fitur Replace =====
 void replaceText() {
     char oldWord[100], newWord[100];
     int i;
