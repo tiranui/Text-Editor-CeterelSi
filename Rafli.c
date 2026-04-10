@@ -5,51 +5,48 @@ void openFile() {
     char filename[100];
     FILE *fp;
 
-    clearScreen();
-    printf("Open file: ");
+    // Tidak perlu clearScreen() di sini karena main.c sudah handle refresh
+    // Kita langsung minta input di area yang sudah disiapkan gotoxy() di main
+    printf("Buka file: "); 
 
-    fgets(filename, sizeof(filename), stdin);
-
-    // handle newline sisa
-    if (filename[0] == '\n') {
-        fgets(filename, sizeof(filename), stdin);
+    // Menggunakan fgets untuk mengambil nama file
+    if (fgets(filename, sizeof(filename), stdin) != NULL) {
+        // Hapus newline di akhir input
+        filename[strcspn(filename, "\n")] = '\0';
     }
 
-    // hapus newline
-    filename[strcspn(filename, "\n")] = '\0';
+    // Jika user menekan enter tanpa ngetik apa-apa
+    if (strlen(filename) == 0) return;
 
     fp = fopen(filename, "r");
 
     if (!fp) {
-        perror("Error opening file");
+        // Jika error, tampilkan pesan di bawah agar tidak merusak UI
+        printf("\nError: File tidak ditemukan!");
         system("pause");
         return;
     }
 
     line_count = 0;
 
-    while (fgets(text[line_count], MAX_LENGTH, fp)) {
-
-        // hapus newline dari file
-        text[line_count][strcspn(text[line_count], "\n")] = '\0';
-
-        if (line_count < MAX_LINES - 1) {
-            line_count++;
-        } else {
-            break;
-        }
+    // Membaca file baris demi baris
+    while (fgets(text[line_count], MAX_LENGTH, fp) && line_count < MAX_LINES) {
+        // Hapus newline bawaan file agar tidak double newline di editor
+        text[line_count][strcspn(text[line_count], "\r\n")] = '\0';
+        line_count++;
     }
 
     fclose(fp);
 
+    // Update status file saat ini
     strcpy(currentFile, filename);
 
-    // reset cursor
+    // Reset posisi kursor ke awal file
     cy = 0;
     cx = 0;
     row_offset = 0;
 
-    // kalau file kosong
+    // Jika file yang dibuka ternyata kosong
     if (line_count == 0) {
         line_count = 1;
         text[0][0] = '\0';
@@ -61,8 +58,10 @@ void saveFile() {
     int i;
     FILE *fp;
 
+    // Jika belum ada nama file, arahkan ke Save As
     if (strlen(currentFile) == 0) {
-        printf("Gunakan Save As dulu!\n");
+        gotoxy(1, VIEW_HEIGHT + 11);
+        printf("Peringatan: Gunakan Save As dulu!");
         system("pause");
         return;
     }
@@ -71,14 +70,19 @@ void saveFile() {
 
     if (!fp) {
         perror("Error saving file");
+        system("pause");
         return;
     }
 
     for (i = 0; i < line_count; i++) {
-        fprintf(fp, "%s\n", text[i]); // ✅ tambahin newline biar rapi
+        fprintf(fp, "%s\n", text[i]); 
     }
 
     fclose(fp);
+    
+    gotoxy(1, VIEW_HEIGHT + 11);
+    printf("File berhasil disimpan ke: %s", currentFile);
+    system("pause");
 }
 
 // ===== Fitur Save As =====
@@ -87,37 +91,45 @@ void saveAs() {
     char filename[100];
     FILE *fp;
 
-    clearScreen();
-    printf("Save As: ");
+    printf("Simpan sebagai: ");
 
-    fgets(filename, sizeof(filename), stdin);
-
-    if (filename[0] == '\n') {
-        fgets(filename, sizeof(filename), stdin);
+    if (fgets(filename, sizeof(filename), stdin) != NULL) {
+        filename[strcspn(filename, "\n")] = '\0';
     }
 
-    filename[strcspn(filename, "\n")] = '\0';
+    if (strlen(filename) == 0) return;
 
     fp = fopen(filename, "w");
 
     if (!fp) {
         perror("Error saving file");
+        system("pause");
         return;
     }
 
     for (i = 0; i < line_count; i++) {
-        fprintf(fp, "%s\n", text[i]); // ✅ biar tiap baris turun
+        fprintf(fp, "%s\n", text[i]); 
     }
 
     fclose(fp);
 
+    // Update nama file aktif
     strcpy(currentFile, filename);
+    
+    printf("\nBerhasil disimpan!");
+    system("pause");
 }
 
 // ===== Fitur Close File =====
 void closeFile() {
+    int i;
     line_count = 1;
-    text[0][0] = '\0';
+    
+    // Bersihkan semua array text
+    for (i = 0; i < MAX_LINES; i++) {
+        text[i][0] = '\0';
+    }
+    
     currentFile[0] = '\0';
     cx = 0;
     cy = 0;
