@@ -1,31 +1,37 @@
-/*Library*/
+#ifndef RAFLI_H
+#define RAFLI_H
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
+#include <windows.h>
 
-#define MAX_LINES 1000
-#define MAX_LENGTH 256
-#define VIEW_HEIGHT 20
+#define MAX_LENGTH  256
+#define VIEW_HEIGHT  20
 
-extern char text[MAX_LINES][MAX_LENGTH];
-extern int line_count;
-extern char currentFile[100];
-extern int cx, cy;
-extern int row_offset;
-extern int mode;
+typedef struct Node {
+    char line[MAX_LENGTH];
+    struct Node *next;
+    struct Node *prev;
+} Node;
 
-//bagian open file
+extern Node *head;
+extern Node *current;
+extern int   line_count;
+extern char  currentFile[100];
+extern int   cx, cy;
+extern int   row_offset;
+extern int   mode;
+
+Node* createNode();
+Node* getNodeAt(int index);
+void  freeAllNodes();
+
 void openFile();
-
-// bagian close file
 void closeFile();
-
-// bagian save file
 void saveFile();
-
-//bagian close file
 void saveAs();
-
-// Clear screen
 void clearScreen();
+
+#endif

@@ -6,7 +6,13 @@
 char text[MAX_LINES][MAX_LENGTH];
 int line_count = 1;
 
-char currentFile[100] = "";
+Node *head    = NULL;
+Node *current = NULL;
+int   line_count  = 1;
+char  currentFile[100] = "";
+int   cx = 0, cy = 0;
+int   row_offset = 0;
+int   mode = 0;
 
 int cx = 0, cy = 0;
 int row_offset = 0;
@@ -15,7 +21,7 @@ int mode = 0; // 0 = EDIT, 1 = COMMAND
 
 // ===== KEY =====
 enum keys {
-    ARROW_UP = 1000,
+    ARROW_UP   = 1000,
     ARROW_DOWN,
     ARROW_LEFT,
     ARROW_RIGHT,
@@ -45,182 +51,294 @@ int readKey() {
     return c;
 }
 
-// ===== DISPLAY =====
 void clearScreen() {
-    printf("\033[H");
+    COORD posisi = {0, 0};
+    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), posisi);
+}
+
+void setCursorVisibility(int visible) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+    cursorInfo.bVisible = visible; // 0 (false) untuk sembunyi, 1 (true) untuk muncul
+    SetConsoleCursorInfo(hOut, &cursorInfo);
 }
 
 void printLineWithCursor(int row) {
-    int i;
-    int len = strlen(text[row]);
-    printf("\033[K  "); 
+    Node *node = getNodeAt(row);
+    int i, len;
 
-    for (i = 0; i < len; i++) {
+    if (node == NULL) return;
+
+    len = strlen(node->line);
+    printf("%3d | ", row + 1);
+
+    for (i = 0; i <= len; i++) {
         if (row == cy && i == cx) {
             printf("|");
         }
-        printf("%c", text[row][i]);
+        if (i < len) {
+            printf("%c", node->line[i]);
+        }
     }
-    if (row == cy && cx == len) {
-        printf("|");
-    }
-    printf("\n");
+    printf("                                                    \n");
 }
 
 void editorRefreshScreen() {
     int i;
     printf("\033[?25l"); 
     clearScreen();
-
-    printf("\033[K===== MINI NOTEPAD =====\n");
-    printf("\033[KFile: %s\n", strlen(currentFile) ? currentFile : "(None)");
-    printf("\033[KMODE: %s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
-    printf("\033[K\n\033[K========================\n");
-
-    if (mode == 0) {
-        printf("\033[KESC = Command Mode\n");
-    } else {
-        printf("\033[KI: Edit  O: Open      S: Save       A: SaveAs  N: New\n");
-        printf("\033[KF: Find  R: Replace   C: Close FIle Q: Quit\n");
-        printf("\033[KY: Copy  P: Paste     U: Undo       E: Redo\n");
-    }
-
-    printf("\033[K----------------------------------\n");
+    printf("========================================\n");
+    printf("         MINI NOTEPAD                   \n");
+    printf("========================================\n");
+    printf(" File : %-40s\n", strlen(currentFile) ? currentFile : "(Belum ada)");
+    printf(" Mode : %-40s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
+    printf(" Brs  : %-5d  |  Kol : %-5d\n", cy + 1, cx + 1);
+    printf("========================================\n\n");
 
     for (i = 0; i < VIEW_HEIGHT; i++) {
         int fileRow = i + row_offset;
         if (fileRow >= line_count) {
-            printf("\033[K\n");
+            printf("~                                                       \n");
         } else {
             printLineWithCursor(fileRow);
         }
     }
-    
-    printf("\033[K----------------------------------\n");
-    printf("\033[J"); 
-    fflush(stdout);
-}
 
-// ===== CURSOR =====
-void moveCursor(int key) {
-    int len = strlen(text[cy]);
-    switch (key) {
-        case ARROW_UP:    if (cy > 0) cy--; break;
-        case ARROW_DOWN:  if (cy < line_count - 1) cy++; break;
-        case ARROW_LEFT:  if (cx > 0) cx--; break;
-        case ARROW_RIGHT: if (cx < len) cx++; break;
-        case PAGE_UP:     cy = (cy - VIEW_HEIGHT < 0) ? 0 : cy - VIEW_HEIGHT; break;
-        case PAGE_DOWN:   cy = (cy + VIEW_HEIGHT >= line_count) ? line_count - 1 : cy + VIEW_HEIGHT; break;
+    printf("\n");
+    if (mode == 0) {
+        printf("[ESC] Masuk Command Mode                \n");
+        printf("                                        \n");
+        printf("                                        \n");
+        printf("                                        \n");
+        printf("========================================\n");
+    } else {
+        printf("========================================\n");
+        printf("[I]Edit  [O]Buka  [S]Simpan             \n");
+        printf("[A]SimpanSebagai [C]Tutup               \n");
+        printf("[Q]Keluar                               \n");
+        printf("========================================\n");
     }
-    if (cx > (int)strlen(text[cy])) cx = strlen(text[cy]);
-    if (cy < row_offset) row_offset = cy;
-    if (cy >= row_offset + VIEW_HEIGHT) row_offset = cy - VIEW_HEIGHT + 1;
+    printf("                                                                \n");
+    printf("                                                                \n");
+    printf("                                                                \n");
+
+    if (mode == 0) {
+        COORD kursorTeks = {6 + cx, 8 + (cy - row_offset)};
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), kursorTeks);
+    } else {
+        COORD kursorMenu = {0, 33};
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), kursorMenu);
+    }
 }
 
-// ===== EDIT =====
+void moveCursor(int key) {
+    switch (key) {
+        case ARROW_UP:
+            if (cy > 0) {
+                cy--;
+                current = current->prev;
+            }
+            break;
+
+        case ARROW_DOWN:
+            if (cy < line_count - 1) {
+                cy++;
+                current = current->next;
+            }
+            break;
+
+        case ARROW_LEFT:
+            if (cx > 0) cx--;
+            break;
+
+        case ARROW_RIGHT:
+            if (cx < (int)strlen(current->line)) cx++;
+            break;
+
+        case PAGE_UP: {
+            int steps = VIEW_HEIGHT;
+            while (steps > 0 && cy > 0) {
+                cy--;
+                current = current->prev;
+                steps--;
+            }
+            break;
+        }
+
+        case PAGE_DOWN: {
+            int steps = VIEW_HEIGHT;
+            while (steps > 0 && cy < line_count - 1) {
+                cy++;
+                current = current->next;
+                steps--;
+            }
+            break;
+        }
+    }
+
+    if (cx > (int)strlen(current->line)) {
+        cx = strlen(current->line);
+    }
+
+    if (cy < row_offset)
+        row_offset = cy;
+    if (cy >= row_offset + VIEW_HEIGHT)
+        row_offset = cy - VIEW_HEIGHT + 1;
+}
+
 void insertChar(char c) {
-    int len = strlen(text[cy]);
+    int len = strlen(current->line);
     int i;
     if (len >= MAX_LENGTH - 1) return;
     
     pushUndo();
     for (i = len; i >= cx; i--) {
-        text[cy][i + 1] = text[cy][i];
+        current->line[i + 1] = current->line[i];
     }
-    text[cy][cx] = c;
+
+    current->line[cx] = c;
     cx++;
     text[cy][len + 1] = '\0';
 }
 
 void insertNewLine() {
-    int i;
-    if (line_count >= MAX_LINES) return;
-    
-    pushUndo();
-    for (i = line_count; i > cy + 1; i--) {
-        strcpy(text[i], text[i - 1]);
+    Node *newNode = createNode();
+
+    strcpy(newNode->line, current->line + cx);
+    current->line[cx] = '\0';
+
+    newNode->next = current->next;
+    newNode->prev = current;
+
+    if (current->next != NULL) {
+        current->next->prev = newNode;
     }
-    strcpy(text[cy + 1], text[cy] + cx);
-    text[cy][cx] = '\0';
+    current->next = newNode;
+
     line_count++;
     cy++;
+    current = newNode;
     cx = 0;
+
+    if (cy >= row_offset + VIEW_HEIGHT) {
+        row_offset = cy - VIEW_HEIGHT + 1;
+    }
 }
 
 void deleteChar() {
-    int len = strlen(text[cy]);
+    int len = strlen(current->line);
     int i;
     if (cx > 0) {
         pushUndo();
         for (i = cx - 1; i < len; i++) {
-            text[cy][i] = text[cy][i + 1];
+            current->line[i] = current->line[i + 1];
         }
         cx--;
-        text[cy][len - 1] = '\0';
+
+    } else if (cy > 0) {
+        Node *prevNode = current->prev;
+        int   prevLen  = strlen(prevNode->line);
+
+        if (prevLen + len < MAX_LENGTH - 1) {
+            cx = prevLen;
+            strcat(prevNode->line, current->line);
+
+            prevNode->next = current->next;
+            if (current->next != NULL) {
+                current->next->prev = prevNode;
+            }
+
+            free(current);
+            current = prevNode;
+            cy--;
+            line_count--;
+
+            if (cy < row_offset) row_offset = cy;
+        }
     }
 }
 
-// ===== MAIN =====
+int confirmQuit() {
+    char choice;
+
+    printf("\n===== KELUAR PROGRAM =====\n\n");
+    printf("Yakin ingin keluar?\n\n");
+    printf("  1. Yes         - Keluar TANPA simpan\n");
+    printf("  2. Save First - Simpan DULU, lalu keluar\n");
+    printf("  3. Cancel     - Batalkan\n");
+    printf("\nPilihan [1/2/3]: ");
+
+    choice = getch();
+    printf("%c\n", choice);
+
+    if (choice == '1') {
+        return 1;
+    } else if (choice == '2') {
+        saveFile();
+        return 1;
+    }
+
+    return 0;
+}
+
 int main() {
     int key;
-    int i;
-    
-    for (i = 0; i < MAX_LINES; i++) {
-        text[i][0] = '\0';
-    }
+
+    setCursorVisibility(0);
+
+    head    = createNode();
+    current = head;
 
     while (1) {
         editorRefreshScreen();
         key = readKey();
 
         if (mode == 0) {
-            if (key == 27) mode = 1;
-            else if (key == 13) insertNewLine();
-            else if (key == 8) deleteChar();
-            else if (key >= 32 && key <= 126) insertChar(key);
-            else moveCursor(key);
-        } 
-        else {
+            if (key == 27) {
+                mode = 1;
+            } else if (key == 13) {
+                insertNewLine();
+            } else if (key == 8) {
+                deleteChar();
+            } else if (key >= 32 && key <= 126) {
+                insertChar((char)key);
+            } else {
+                moveCursor(key);
+            }
+
+        } else {
             switch (key) {
-                case 'i': case 'I': mode = 0; break;
-                
-                case 'o': case 'O': 
-                    gotoxy(1, VIEW_HEIGHT + 10);
-                    printf("\033[?25h");
-                    openFile();
+                case 'i': case 'I': 
                     mode = 0; 
+                    system("cls"); // Reset layar sekali agar koordinat kembali (0,0) bersih
                     break;
-
-                case 's': case 'S': saveFile(); break;
-
+                case 'o': case 'O': 
+                    openFile(); 
+                    mode = 0;  
+                    system("cls"); // Reset layar total setelah sukses open file
+                    break;
+                case 's': case 'S': 
+                    saveFile(); 
+                    system("cls"); // Reset layar total setelah sukses save file
+                    break;
                 case 'a': case 'A': 
-                    gotoxy(1, VIEW_HEIGHT + 10);
-                    printf("\033[?25h");
-                    saveAs(); 
+                    saveAs();   
+                    system("cls"); // Reset layar total setelah sukses save as
                     break;
-
-                case 'f': case 'F': 
-                    gotoxy(1, VIEW_HEIGHT + 10);
-                    printf("\033[?25h");
-                    findText(); 
+                case 'c': case 'C': 
+                    closeFile();
+                    system("cls"); // Reset layar total setelah sukses close file
                     break;
-
-                case 'r': case 'R': 
-                    gotoxy(1, VIEW_HEIGHT + 10);
-                    printf("\033[?25h");
-                    replaceText(); 
+                case 'q': case 'Q':
+                    if (confirmQuit()) {
+                        // Munculkan kembali kursor asli sebelum benar-benar keluar ke CMD/Terminal
+                        setCursorVisibility(1); 
+                        return 0;
+                    }
+                    system("cls"); // Reset layar jika user membatalkan quit
                     break;
-
-                case 'c': case 'C': closeFile(); break;
-                case 'n': case 'N': newFile(); break;
-                case 'y': case 'Y': copyLine(); break;
-                case 'p': case 'P': pasteLine(); break;
-                case 'u': case 'U': undoAction(); break;
-                case 'e': case 'E': redoAction(); break;
-                
-                case 'q': case 'Q': 
-                    printf("\033[?25h\033[2J\033[H");
-                    return 0;
             }
         }
     }
