@@ -7,56 +7,40 @@
 #include <conio.h>
 #include <time.h>
 
-/* ─── Konstanta ──────────────────────────────────────────────────── */
 #define MAX_LENGTH   256
 #define VIEW_HEIGHT  20
 #define UNDO_TIMEOUT 2.0
 
-/* Kompatibilitas _strdup antara MSVC dan GCC/MinGW */
-#ifdef _MSC_VER
-#  define str_dup _strdup
-#else
-#  define str_dup strdup
-#endif
+char *str_dup(const char *s);
 
-/* ─── Struktur Data ──────────────────────────────────────────────── */
-
-/* Baris teks: Doubly Linked List (ada prev DAN next) */
 typedef struct Line {
     char         data[MAX_LENGTH];
     struct Line *next;
-    struct Line *prev;          /* <-- BARU: pointer mundur */
+    struct Line *prev;
 } Line;
 
-/* Node snapshot untuk Undo/Redo: Doubly Linked List */
 typedef struct EditorSnapshot {
-    char **lines_data;          /* array string per-baris */
+    char **lines_data;
     int    line_count;
     int    cx, cy;
     struct EditorSnapshot *prev;
     struct EditorSnapshot *next;
 } EditorSnapshot;
 
-/* Papan klip (clipboard) */
 typedef struct ClipboardNode {
     char              data[MAX_LENGTH];
     struct ClipboardNode *next;
 } ClipboardNode;
 
-/* ─── Variabel Global (extern – didefinisikan di masing-masing .c) ─ */
-
-/* noel.c */
 extern Line           *head;
-extern Line           *tail;            /* <-- BARU: ujung list baris */
+extern Line           *tail;
 extern ClipboardNode  *clip_head;
 extern EditorSnapshot *history_cursor;
 extern time_t          last_action_time;
 
-/* main.c */
 extern int  line_count, cx, cy, row_offset, mode;
 extern char currentFile[100];
 
-/* ─── Prototipe Fungsi (noel.c) ──────────────────────────────────── */
 Line *getLineNode(int index);
 
 void  pushUndo(void);
@@ -78,4 +62,4 @@ void  deleteChar(void);
 
 void  editorRefreshScreen(void);
 
-#endif /* NOEL_H */
+#endif
