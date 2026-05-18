@@ -21,6 +21,8 @@ Node* getNodeAt(int index) {
     return temp;
 }
 
+void setCursorVisibility(int visible);
+
 void freeAllNodes() {
     Node *temp = head;
     while (temp != NULL) {
