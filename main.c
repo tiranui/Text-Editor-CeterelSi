@@ -38,8 +38,14 @@ void clearScreen() {
     SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), posisi);
 }
 
-void setCursorVisibility(int visible)
-
+void setCursorVisibility(int visible) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cursorInfo;
+    
+    GetConsoleCursorInfo(hOut, &cursorInfo);
+    cursorInfo.bVisible = visible; 
+    SetConsoleCursorInfo(hOut, &cursorInfo);
+}
 void printLineWithCursor(int row) {
     Node *node = getNodeAt(row);
     int i, len;
