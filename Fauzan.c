@@ -1,60 +1,91 @@
-#include "Rafli.h"
 #include "Fauzan.h"
 
-// ================= FIND =================
 void findText() {
-    char keyword[100];
-    int i, found = 0;
+    char  keyword[100];
+    int   found  = 0;
+    int   rowNum = 1;
+    Line *curr;
 
     printf("\nMasukkan kata yang dicari: ");
     scanf("%s", keyword);
 
-    printf("\nHasil:\n");
+    printf("\nHasil pencarian \"%s\":\n", keyword);
+    printf("----------------------------------\n");
 
-    for (i = 0; i < line_count; i++) {
-        if (strstr(text[i], keyword) != NULL) {
-            printf("Baris %d: %s\n", i + 1, text[i]);
+    curr = head;
+    while (curr != NULL) {
+        if (strstr(curr->data, keyword) != NULL) {
+            printf("Baris %d: %s\n", rowNum, curr->data);
             found = 1;
         }
+        curr = curr->next;
+        rowNum++;
     }
 
     if (!found) {
-        printf("Tidak ditemukan.\n");
+        printf("Kata \"%s\" tidak ditemukan.\n", keyword);
     }
 
-    printf("\nTekan tombol apa saja...");
+    printf("----------------------------------\n");
+    printf("Tekan tombol apa saja...");
     getch();
 }
 
-// ================= REPLACE =================
-void replaceText() {
-    char oldWord[100], newWord[100];
-    int i;
+static void replaceAllInLine(char *line, const char *oldWord, const char *newWord) {
+    char  buffer[MAX_LENGTH];
+    char *src    = line;
+    char *pos;
+    int   oldLen = (int)strlen(oldWord);
+    int   partLen;
 
-    printf("\nKata yang ingin diganti: ");
-    scanf("%s", oldWord);
+    buffer[0] = '\0';
 
-    printf("Ganti dengan: ");
-    scanf("%s", newWord);
-
-    for (i = 0; i < line_count; i++) {
-        char buffer[MAX_LENGTH * 2];
-        char *pos = strstr(text[i], oldWord);
-
-        if (pos != NULL) {
-            int index = pos - text[i];
-
-            strncpy(buffer, text[i], index);
-            buffer[index] = '\0';
-
-            strcat(buffer, newWord);
-            strcat(buffer, pos + strlen(oldWord));
-
-            strcpy(text[i], buffer);
-        }
+    while ((pos = strstr(src, oldWord)) != NULL) {
+        // Salin bagian sebelum kata yang ditemukan
+        partLen = (int)(pos - src);
+        strncat(buffer, src, partLen);
+        strcat(buffer, newWord);
+        src = pos + oldLen;
     }
 
-    printf("\nReplace selesai!\n");
+    strcat(buffer, src);
+
+    strcpy(line, buffer);
+}
+
+void replaceText() {
+    char  oldWord[100], newWord[100];
+    int   totalReplaced = 0;
+    Line *curr;
+    char *check;
+
+    printf("\nKata yang ingin diganti : ");
+    scanf("%s", oldWord);
+
+    printf("Ganti dengan            : ");
+    scanf("%s", newWord);
+
+    printf("\nProses replace...\n");
+
+    curr = head;
+    while (curr != NULL) {
+        check = curr->data;
+        while ((check = strstr(check, oldWord)) != NULL) {
+            totalReplaced++;
+            check += strlen(oldWord);
+        }
+
+        replaceAllInLine(curr->data, oldWord, newWord);
+
+        curr = curr->next;
+    }
+
+    if (totalReplaced > 0) {
+        printf("Replace selesai! Total %d kemunculan diganti.\n", totalReplaced);
+    } else {
+        printf("Kata \"%s\" tidak ditemukan.\n", oldWord);
+    }
+
     printf("Tekan tombol apa saja...");
     getch();
 }
