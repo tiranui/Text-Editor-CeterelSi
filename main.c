@@ -13,9 +13,6 @@ int  mode       = 0;     // 0 = EDIT, 1 = COMMAND
 
 char currentFile[100] = "";
 
-// ===================================================
-//   KEY CODES
-// ===================================================
 enum keys {
     ARROW_UP    = 1000,
     ARROW_DOWN,
@@ -25,15 +22,6 @@ enum keys {
     PAGE_DOWN
 };
 
-// ===================================================
-//   HELPER LINKED LIST
-// ===================================================
-
-/*
- * createLine() — Alokasi node baru dengan data kosong.
- *
- *  Menggantikan: text[i][0] = '\0';
- */
 Line* createLine() {
     Line *node = (Line*)malloc(sizeof(Line));
     if (node == NULL) {
@@ -73,9 +61,6 @@ int readKey() {
     return c;
 }
 
-// ===================================================
-//   DISPLAY
-// ===================================================
 void clearScreen() {
     printf("\033[H");
 }
@@ -120,7 +105,6 @@ void editorRefreshScreen() {
 
     printf("\033[K----------------------------------\n");
 
-    // getLine() hanya dipanggil sekali, sisanya maju via ->next
     line = getLine(row_offset);
 
     for (i = 0; i < VIEW_HEIGHT; i++) {
@@ -219,13 +203,10 @@ void insertNewLine() {
     newNode  = createLine();
     nextNode = cursor_line->next;
 
-    // Salin teks setelah kursor ke baris baru
     strcpy(newNode->data, cursor_line->data + cx);
 
-    // Potong baris saat ini di posisi kursor
     cursor_line->data[cx] = '\0';
 
-    // Sambungkan newNode ke dalam linked list
     newNode->prev     = cursor_line;
     newNode->next     = nextNode;
     cursor_line->next = newNode;
@@ -248,35 +229,28 @@ void mergeWithPrevLine() {
     Line *nextNode = cursor_line->next;
     int   prevLen;
 
-    // Tidak bisa merge jika sudah di baris pertama
     if (prevNode == NULL) return;
 
     prevLen = (int)strlen(prevNode->data);
 
-    // Cek apakah hasil gabungan melebihi batas panjang
     if (prevLen + (int)strlen(cursor_line->data) >= MAX_LENGTH) return;
 
-    // Tempel isi baris saat ini ke akhir baris sebelumnya
     strcat(prevNode->data, cursor_line->data);
 
-    // Putuskan cursor_line dari linked list
     prevNode->next = nextNode;
     if (nextNode != NULL) {
         nextNode->prev = prevNode;
     } else {
-        tail = prevNode; // prevNode jadi tail baru
+        tail = prevNode;
     }
 
-    // Bebaskan memori node yang dihapus
     free(cursor_line);
 
-    // Pindahkan kursor ke akhir teks baris sebelumnya
     cursor_line = prevNode;
     cx          = prevLen;
     cy--;
     line_count--;
 
-    // Update scroll offset jika perlu
     if (cy < row_offset) row_offset = cy;
 }
 
@@ -286,10 +260,8 @@ void deleteChar() {
     int i;
 
     if (cx == 0) {
-        // BUG FIX: merge ke baris sebelumnya
         mergeWithPrevLine();
     } else {
-        // Hapus karakter di kiri kursor dengan menggeser ke kiri
         for (i = cx - 1; i < len; i++) {
             cursor_line->data[i] = cursor_line->data[i + 1];
         }
@@ -298,17 +270,9 @@ void deleteChar() {
     }
 }
 
-// ===================================================
-//   MAIN
-// ===================================================
 int main() {
     int key;
 
-    /*
-     * Inisialisasi Linked List
-     * Cukup buat satu node kosong sebagai baris pertama.
-     * Node baru dibuat via createLine() hanya saat dibutuhkan.
-     */
     head        = createLine();
     tail        = head;
     cursor_line = head;
@@ -319,7 +283,6 @@ int main() {
         key = readKey();
 
         if (mode == 0) {
-            // ---- MODE EDIT ----
             if (key == 27) {
                 mode = 1;
             }
@@ -337,7 +300,6 @@ int main() {
             }
 
         } else {
-            // ---- MODE COMMAND ----
             switch (key) {
                 case 'i': case 'I':
                     mode = 0;
@@ -352,7 +314,7 @@ int main() {
                     break;
 
                 case 'q': case 'Q':
-                    printf("\033[?25h"); // Tampilkan kembali kursor terminal
+                    printf("\033[?25h");
                     return 0;
             }
         }
