@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include <stdio.h>
 #include "Fauzan.h"
 
@@ -319,7 +318,5 @@ int main() {
             }
         }
     }
-
->>>>>>> 251e28b (perubahan linked list pada fitur dan main)
     return 0;
 }
