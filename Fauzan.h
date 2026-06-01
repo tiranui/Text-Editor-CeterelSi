@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include <string.h>
+<<<<<<< HEAD
 #include <stdlib.h>
 #include <conio.h>
 
@@ -46,6 +47,14 @@ Line* getLine(int n);
 
 // ================= FUNGSI FAUZAN =================
 void findText();
+=======
+#include <conio.h>
+
+// Bagian Find
+void findText();
+
+// Bagian Replace
+>>>>>>> 86a3a17253a5491f60543b0e5a2e4a399f2924be
 void replaceText();
 
 #endif
