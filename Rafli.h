@@ -27,12 +27,12 @@ extern int   mode;
 Node* createNode();
 Node* getNodeAt(int index);
 void  freeAllNodes();
-void setCursorVisibility(int visible);
 
 void openFile();
 void closeFile();
 void saveFile();
 void saveAs();
 void clearScreen();
+void setCursorVisibility(int visible);
 
 #endif

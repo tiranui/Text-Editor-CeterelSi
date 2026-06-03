@@ -21,7 +21,6 @@ Node* getNodeAt(int index) {
     return temp;
 }
 
-
 void freeAllNodes() {
     Node *temp = head;
     while (temp != NULL) {
@@ -54,7 +53,6 @@ void getUniqueFilename(char *filename, char *result) {
     }
 
     dot = strrchr(filename, '.');
-
     if (dot != NULL) {
         strncpy(name, filename, dot - filename);
         name[dot - filename] = '\0';
@@ -79,13 +77,15 @@ void writeLinesToFile(FILE *fp) {
 }
 
 void openFile() {
-    char   filename[100];
+    char  filename[100];
     FILE *fp;
     Node *newNode, *last;
-    char   buffer[MAX_LENGTH];
+    char  buffer[MAX_LENGTH];
+
+    system("cls");
     setCursorVisibility(1);
 
-    printf("\n===== BUKA FILE =====\n");
+    printf("===== BUKA FILE =====\n");
     printf("Nama file: ");
 
     fflush(stdin);
@@ -172,9 +172,10 @@ void saveAs() {
     char choice;
     FILE *fp;
 
+    system("cls");
     setCursorVisibility(1);
 
-    printf("\n===== SIMPAN SEBAGAI =====\n");
+    printf("===== SIMPAN SEBAGAI =====\n");
     printf("Nama file: ");
 
     fflush(stdin);
@@ -233,11 +234,13 @@ void saveAs() {
 void closeFile() {
     char choice;
 
-    printf("\n===== TUTUP FILE =====\n");
+    system("cls");
+
+    printf("===== TUTUP FILE =====\n");
     printf("File aktif: %s\n\n",
            strlen(currentFile) ? currentFile : "(Tidak ada)");
     printf("Yakin ingin menutup file?\n\n");
-    printf("  1. Yes         - Tutup TANPA simpan\n");
+    printf("  1. Yes        - Tutup TANPA simpan\n");
     printf("  2. Save First - Simpan DULU, lalu tutup\n");
     printf("  3. Cancel     - Batalkan\n");
     printf("\nPilihan [1/2/3]: ");

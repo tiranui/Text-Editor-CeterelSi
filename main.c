@@ -1,15 +1,15 @@
 #include "Rafli.h"
 
-Node *head    = NULL;
-Node *current = NULL;
+Node *head        = NULL;
+Node *current     = NULL;
 int   line_count  = 1;
 char  currentFile[100] = "";
 int   cx = 0, cy = 0;
-int   row_offset = 0;
-int   mode = 0;
+int   row_offset  = 0;
+int   mode        = 0;
 
 enum keys {
-    ARROW_UP   = 1000,
+    ARROW_UP    = 1000,
     ARROW_DOWN,
     ARROW_LEFT,
     ARROW_RIGHT,
@@ -33,19 +33,51 @@ int readKey() {
     return c;
 }
 
+/*
+ * FIX BUG 1 - FLICKERING:
+ * clearScreen() versi lama hanya MEMINDAHKAN kursor ke (0,0) tanpa
+ * benar-benar menghapus layar. Akibatnya teks lama masih ada di buffer
+ * dan tampilan berkedip saat teks baru ditulis di atasnya.
+ *
+ * Solusi: gunakan FillConsoleOutputCharacter + FillConsoleOutputAttribute
+ * untuk menghapus SELURUH isi buffer layar secara sempurna sebelum
+ * menggambar ulang, lalu posisikan kursor ke (0,0).
+ */
 void clearScreen() {
-    COORD posisi = {0, 0};
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), posisi);
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD jumlahKarakter, jumlahDitulis;
+    COORD posisiAwal = {0, 0};
+
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+    jumlahKarakter = csbi.dwSize.X * csbi.dwSize.Y;
+
+    FillConsoleOutputCharacter(hOut, ' ', jumlahKarakter, posisiAwal, &jumlahDitulis);
+    FillConsoleOutputAttribute(hOut, csbi.wAttributes, jumlahKarakter, posisiAwal, &jumlahDitulis);
+    SetConsoleCursorPosition(hOut, posisiAwal);
 }
 
 void setCursorVisibility(int visible) {
     HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cursorInfo;
-    
     GetConsoleCursorInfo(hOut, &cursorInfo);
-    cursorInfo.bVisible = visible; 
+    cursorInfo.bVisible = visible;
     SetConsoleCursorInfo(hOut, &cursorInfo);
 }
+
+/*
+ * FIX BUG 3 - UKURAN CONSOLE:
+ * Set ukuran console buffer agar tampilan tidak terpotong
+ * dan scroll bar tidak muncul yang bisa menggeser koordinat.
+ */
+void setConsoleSize() {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    SMALL_RECT windowSize = {0, 0, 59, 39};
+    COORD bufferSize      = {60, 40};
+    SetConsoleScreenBufferSize(hOut, bufferSize);
+    SetConsoleWindowInfo(hOut, TRUE, &windowSize);
+}
+
 void printLineWithCursor(int row) {
     Node *node = getNodeAt(row);
     int i, len;
@@ -63,25 +95,26 @@ void printLineWithCursor(int row) {
             printf("%c", node->line[i]);
         }
     }
-    printf("                                                    \n");
+    printf("\n");
 }
 
 void editorRefreshScreen() {
     int i;
 
     clearScreen();
+
     printf("========================================\n");
-    printf("         MINI NOTEPAD                   \n");
+    printf("           MINI NOTEPAD                 \n");
     printf("========================================\n");
-    printf(" File : %-40s\n", strlen(currentFile) ? currentFile : "(Belum ada)");
-    printf(" Mode : %-40s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
+    printf(" File : %-36s\n", strlen(currentFile) ? currentFile : "(Belum ada)");
+    printf(" Mode : %-36s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
     printf(" Brs  : %-5d  |  Kol : %-5d\n", cy + 1, cx + 1);
     printf("========================================\n\n");
 
     for (i = 0; i < VIEW_HEIGHT; i++) {
         int fileRow = i + row_offset;
         if (fileRow >= line_count) {
-            printf("~                                                       \n");
+            printf("~\n");
         } else {
             printLineWithCursor(fileRow);
         }
@@ -89,28 +122,29 @@ void editorRefreshScreen() {
 
     printf("\n");
     if (mode == 0) {
-        printf("[ESC] Masuk Command Mode                \n");
-        printf("                                        \n");
-        printf("                                        \n");
-        printf("                                        \n");
-        printf("========================================\n");
+        printf("[ESC] Masuk Command Mode\n");
     } else {
         printf("========================================\n");
-        printf("[I]Edit  [O]Buka  [S]Simpan             \n");
-        printf("[A]SimpanSebagai [C]Tutup               \n");
-        printf("[Q]Keluar                               \n");
+        printf(" [I]Edit  [O]Buka  [S]Simpan\n");
+        printf(" [A]SimpanSebagai [C]Tutup\n");
+        printf(" [Q]Keluar\n");
         printf("========================================\n");
     }
-    printf("                                                                \n");
-    printf("                                                                \n");
-    printf("                                                                \n");
 
+    /*
+     * FIX BUG 2 - POSISI KURSOR:
+     * Hitung posisi kursor berdasarkan jumlah baris header yang tetap:
+     * Baris 0-2  : header (3 baris ===)
+     * Baris 3-5  : info File/Mode/Brs
+     * Baris 6    : === bawah
+     * Baris 7    : baris kosong (dari \n)
+     * Baris 8+   : konten teks (VIEW_HEIGHT baris)
+     *
+     * cx + 6 karena "  1 | " = 6 karakter di depan teks
+     */
     if (mode == 0) {
-        COORD kursorTeks = {6 + cx, 8 + (cy - row_offset)};
-        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), kursorTeks);
-    } else {
-        COORD kursorMenu = {0, 33};
-        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), kursorMenu);
+        COORD posKursor = {6 + cx, 8 + (cy - row_offset)};
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), posKursor);
     }
 }
 
@@ -240,12 +274,21 @@ void deleteChar() {
     }
 }
 
+/*
+ * FIX BUG 4 - CONFIRMQUIT MENIMPA LAYAR EDITOR:
+ * Sebelumnya confirmQuit() langsung printf tanpa membersihkan layar,
+ * sehingga teks menu quit menimpa teks editor yang ada.
+ * Solusi: panggil system("cls") dulu sebelum menampilkan menu.
+ */
 int confirmQuit() {
     char choice;
 
-    printf("\n===== KELUAR PROGRAM =====\n\n");
+    system("cls");
+    setCursorVisibility(1);
+
+    printf("===== KELUAR PROGRAM =====\n\n");
     printf("Yakin ingin keluar?\n\n");
-    printf("  1. Yes         - Keluar TANPA simpan\n");
+    printf("  1. Yes        - Keluar TANPA simpan\n");
     printf("  2. Save First - Simpan DULU, lalu keluar\n");
     printf("  3. Cancel     - Batalkan\n");
     printf("\nPilihan [1/2/3]: ");
@@ -260,12 +303,12 @@ int confirmQuit() {
         return 1;
     }
 
+    setCursorVisibility(0);
     return 0;
 }
 
 int main() {
-    int key;
-
+    setConsoleSize();
     setCursorVisibility(0);
 
     head    = createNode();
@@ -273,7 +316,7 @@ int main() {
 
     while (1) {
         editorRefreshScreen();
-        key = readKey();
+        int key = readKey();
 
         if (mode == 0) {
             if (key == 27) {
@@ -290,34 +333,32 @@ int main() {
 
         } else {
             switch (key) {
-                case 'i': case 'I': 
-                    mode = 0; 
-                    system("cls"); // Reset layar sekali agar koordinat kembali (0,0) bersih
+                case 'i': case 'I':
+                    mode = 0;
                     break;
-                case 'o': case 'O': 
-                    openFile(); 
-                    mode = 0;  
-                    system("cls"); // Reset layar total setelah sukses open file
+
+                case 'o': case 'O':
+                    openFile();
+                    mode = 0;
                     break;
-                case 's': case 'S': 
-                    saveFile(); 
-                    system("cls"); // Reset layar total setelah sukses save file
+
+                case 's': case 'S':
+                    saveFile();
                     break;
-                case 'a': case 'A': 
-                    saveAs();   
-                    system("cls"); // Reset layar total setelah sukses save as
+
+                case 'a': case 'A':
+                    saveAs();
                     break;
-                case 'c': case 'C': 
+
+                case 'c': case 'C':
                     closeFile();
-                    system("cls"); // Reset layar total setelah sukses close file
                     break;
+
                 case 'q': case 'Q':
                     if (confirmQuit()) {
-                        // Munculkan kembali kursor asli sebelum benar-benar keluar ke CMD/Terminal
-                        setCursorVisibility(1); 
+                        setCursorVisibility(1);
                         return 0;
                     }
-                    system("cls"); // Reset layar jika user membatalkan quit
                     break;
             }
         }
