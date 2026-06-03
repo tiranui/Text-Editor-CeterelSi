@@ -5,61 +5,84 @@
 #include <stdlib.h>
 #include <string.h>
 #include <conio.h>
-#include <time.h>
+#include <windows.h>
 
-#define MAX_LENGTH   256
-#define VIEW_HEIGHT  20
-#define UNDO_TIMEOUT 2.0
+/* ═══════════════════════════════════════════════════════════════
+   KONSTANTA
+   ═══════════════════════════════════════════════════════════════ */
+#define VIEW_HEIGHT  20   /* Jumlah baris yang tampil di layar */
+#define INIT_CAP     64   /* Kapasitas awal buffer tiap baris */
 
-char *str_dup(const char *s);
+/* ═══════════════════════════════════════════════════════════════
+   STRUKTUR: NODE BARIS  (Double Linked List)
 
+   Setiap baris teks = satu node. Node mengenal tetangga atas
+   (prev) dan bawah (next) sehingga kursor bisa bergerak dua arah.
+
+   NULL <- [Baris 0] <-> [Baris 1] <-> [Baris 2] -> NULL
+              ^head                        ^tail
+   ═══════════════════════════════════════════════════════════════ */
 typedef struct Line {
-    char         data[MAX_LENGTH];
-    struct Line *next;
-    struct Line *prev;
+    char        *data;   /* Isi teks baris — buffer dinamis */
+    int          len;    /* Panjang teks saat ini */
+    int          cap;    /* Ukuran buffer yang dialokasi */
+    struct Line *next;   /* Baris di bawah */
+    struct Line *prev;   /* Baris di atas */
 } Line;
 
-typedef struct EditorSnapshot {
-    char **lines_data;
-    int    line_count;
-    int    cx, cy;
-    struct EditorSnapshot *prev;
-    struct EditorSnapshot *next;
-} EditorSnapshot;
+/* ═══════════════════════════════════════════════════════════════
+   STRUKTUR: SNAPSHOT  (Undo/Redo)
 
-typedef struct ClipboardNode {
-    char              data[MAX_LENGTH];
-    struct ClipboardNode *next;
-} ClipboardNode;
+   Setiap snapshot = "foto" seluruh isi editor.
+   Snapshot-snapshot tersambung sebagai linked list:
 
-extern Line           *head;
-extern Line           *tail;
-extern ClipboardNode  *clip_head;
-extern EditorSnapshot *history_cursor;
-extern time_t          last_action_time;
+   [Snap0] <-> [Snap1] <-> [Snap2]
+                               ^--- history_cursor
+
+   Undo = geser cursor mundur | Redo = geser cursor maju
+   ═══════════════════════════════════════════════════════════════ */
+typedef struct Snapshot {
+    char **lines_data;        /* Salinan isi setiap baris */
+    int    line_count;        /* Jumlah baris */
+    int    cx, cy;            /* Posisi kursor */
+    struct Snapshot *prev;
+    struct Snapshot *next;
+} Snapshot;
+
+/* ─── Variabel Global ──────────────────────────────────────── */
+extern Line     *head;
+extern Line     *tail;
+extern Snapshot *history_cursor;
 
 extern int  line_count, cx, cy, row_offset, mode;
 extern char currentFile[100];
 
-Line *getLineNode(int index);
+/* ─── list.c : Operasi Linked List ────────────────────────── */
+Line *createList(void);                    /* Inisialisasi list kosong */
+Line *createNode(void);                    /* Buat satu node baris */
+void  insertList(int after_cy, char *txt); /* Sisipkan baris baru */
+void  deleteList(int target_cy);           /* Hapus satu baris */
+Line *getNode(int index);                  /* Ambil node ke-index */
+void  freeList(void);                      /* Bebaskan seluruh list */
+void  ensureCap(Line *ln, int needed);     /* Perbesar buffer jika perlu */
 
-void  pushUndo(void);
-void  undoAction(void);
-void  redoAction(void);
+/* ─── noel.c : Fitur Editor ───────────────────────────────── */
+void pushSnapshot(void);
+void undoAction(void);
+void redoAction(void);
+void copyLineToClipboard(void);
+void pasteFromClipboard(void);
+void newFile(void);
 
-void  copyLine(void);
-void  pasteLine(void);
-void  newFile(void);
+/* ─── text.c : Operasi Teks ───────────────────────────────── */
+void insertChar(char c);
+void insertNewLine(void);
+void deleteChar(void);
 
-void  freeLines(void);
-void  freeRedoChain(void);
-void  restoreSnapshot(EditorSnapshot *snap);
+/* ─── main.c : Tampilan ───────────────────────────────────── */
+void editorRefreshScreen(void);
 
-void  checkUndoCondition(char c);
-void  insertChar(char c);
-void  insertNewLine(void);
-void  deleteChar(void);
+/* ─── Utilitas ────────────────────────────────────────────── */
+char *str_dup(const char *s);
 
-void  editorRefreshScreen(void);
-
-#endif
+#endif /* NOEL_H */

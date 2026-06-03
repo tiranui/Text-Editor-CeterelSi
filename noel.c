@@ -1,239 +1,226 @@
+/*
+ * noel.c – Fitur utama editor: Undo/Redo, Copy, Paste, New File.
+ *
+ * File ini TIDAK mengurus linked list secara langsung.
+ * Semua operasi list dilakukan lewat fungsi di list.c.
+ */
+
 #include "noel.h"
 
-Line           *head           = NULL;
-Line           *tail           = NULL;
-ClipboardNode  *clip_head      = NULL;
-EditorSnapshot *history_cursor = NULL;
-time_t          last_action_time = 0;
+/* Variabel global — didefinisikan di sini, extern di noel.h */
+Line     *head           = NULL;
+Line     *tail           = NULL;
+Snapshot *history_cursor = NULL;
 
-Line *getLineNode(int index) {
-    Line *curr = head;
-    for (int i = 0; i < index && curr != NULL; i++)
-        curr = curr->next;
-    return curr;
-}
+/* ═══════════════════════════════════════════════════════════════
+   UNDO / REDO
+   ═══════════════════════════════════════════════════════════════ */
 
-char *str_dup(const char *s) {
-    if (s == NULL) return NULL;
-    
-    char *d = (char *)malloc(strlen(s) + 1);
-    if (d != NULL) {
-        strcpy(d, s);
-    }
-    return d;
-}
-
-void freeLines(void) {
-    Line *curr = head;
-    while (curr) {
-        Line *nxt = curr->next;
-        free(curr);
-        curr = nxt;
-    }
-    head = NULL;
-    tail = NULL;
-}
-
-void freeRedoChain(void) {
+/*
+ * freeRedoChain – hapus semua snapshot di depan history_cursor.
+ *
+ * Dipanggil saat user mengetik sesuatu setelah undo —
+ * "masa depan" lama tidak berlaku lagi, jadi kita buang.
+ *
+ * Sebelum: [S0] <-> [S1] <-> [S2] <-> [S3]
+ *                      ^cursor
+ * Sesudah: [S0] <-> [S1]
+ *                      ^cursor  (S2 dan S3 dibebaskan)
+ */
+static void freeRedoChain(void) {
     if (!history_cursor || !history_cursor->next) return;
 
-    EditorSnapshot *curr = history_cursor->next;
-    while (curr) {
-        EditorSnapshot *nxt = curr->next;
+    Snapshot *curr = history_cursor->next;
+    while (curr != NULL) {
+        Snapshot *next = curr->next;
         for (int i = 0; i < curr->line_count; i++)
             free(curr->lines_data[i]);
         free(curr->lines_data);
         free(curr);
-        curr = nxt;
+        curr = next;
     }
     history_cursor->next = NULL;
 }
 
-void pushUndo(void) {
-    EditorSnapshot *snap = (EditorSnapshot *)malloc(sizeof(EditorSnapshot));
+/*
+ * pushSnapshot – simpan "foto" kondisi editor sekarang.
+ *
+ * Kapan dipanggil:
+ *   - Saat user menekan SPASI (setiap kata baru = unit undo)
+ *   - Saat user menekan ENTER
+ *   - Saat user menekan BACKSPACE
+ *   - Sebelum Paste dan New File
+ */
+void pushSnapshot(void) {
+    Snapshot *snap = (Snapshot *)malloc(sizeof(Snapshot));
     if (!snap) return;
 
-    snap->line_count  = line_count;
-    snap->cx          = cx;
-    snap->cy          = cy;
-    snap->lines_data  = (char **)malloc(line_count * sizeof(char *));
+    /* Simpan posisi kursor dan jumlah baris */
+    snap->line_count = line_count;
+    snap->cx         = cx;
+    snap->cy         = cy;
 
+    /* Salin isi setiap baris ke dalam snapshot */
+    snap->lines_data = (char **)malloc(line_count * sizeof(char *));
     for (int i = 0; i < line_count; i++)
-        snap->lines_data[i] = str_dup(getLineNode(i)->data);
+        snap->lines_data[i] = str_dup(getNode(i)->data);
 
+    /* Buang redo chain (tidak bisa redo setelah aksi baru) */
     freeRedoChain();
 
+    /* Sambungkan snapshot baru ke rantai */
     snap->prev = history_cursor;
     snap->next = NULL;
-    if (history_cursor) history_cursor->next = snap;
+    if (history_cursor)
+        history_cursor->next = snap;
     history_cursor = snap;
 }
 
-static void updateCurrentSnapshot(void) {
-    if (!history_cursor) {
-        pushUndo();
-        return;
-    }
-
-    for (int i = 0; i < history_cursor->line_count; i++)
-        free(history_cursor->lines_data[i]);
-    free(history_cursor->lines_data);
-
-    history_cursor->line_count = line_count;
-    history_cursor->cx         = cx;
-    history_cursor->cy         = cy;
-    history_cursor->lines_data = (char **)malloc(line_count * sizeof(char *));
-    for (int i = 0; i < line_count; i++)
-        history_cursor->lines_data[i] = str_dup(getLineNode(i)->data);
-}
-
-void restoreSnapshot(EditorSnapshot *snap) {
+/*
+ * restoreSnapshot – terapkan isi snapshot ke editor.
+ *
+ * Cara kerja:
+ *   1. Hapus semua baris yang ada sekarang
+ *   2. Buat ulang linked list dari data snapshot
+ *   3. Restore posisi kursor
+ */
+static void restoreSnapshot(Snapshot *snap) {
     if (!snap) return;
 
-    freeLines();
+    /* Hapus semua baris */
+    freeList();
 
+    /* Buat ulang linked list dari data snapshot */
     Line *last = NULL;
     for (int i = 0; i < snap->line_count; i++) {
-        Line *node = (Line *)malloc(sizeof(Line));
+        Line *node = createNode();
+        int slen = (int)strlen(snap->lines_data[i]);
+        ensureCap(node, slen + 1);
         strcpy(node->data, snap->lines_data[i]);
-        node->next = NULL;
+        node->len  = slen;
         node->prev = last;
-        if (!head) head = node;
-        else       last->next = node;
+
+        if (head == NULL) head = node;
+        else              last->next = node;
         last = node;
     }
     tail = last;
 
+    /* Restore posisi kursor */
     line_count = snap->line_count;
     cx = snap->cx;
     cy = snap->cy;
 }
 
+/* undoAction – mundur satu langkah di rantai snapshot */
 void undoAction(void) {
     if (!history_cursor || !history_cursor->prev) return;
-
-    updateCurrentSnapshot();
-
     history_cursor = history_cursor->prev;
     restoreSnapshot(history_cursor);
-    last_action_time = 0;
 }
 
+/* redoAction – maju satu langkah di rantai snapshot */
 void redoAction(void) {
     if (!history_cursor || !history_cursor->next) return;
-
     history_cursor = history_cursor->next;
     restoreSnapshot(history_cursor);
-    last_action_time = 0;
 }
 
-void checkUndoCondition(char c) {
-    time_t now = time(NULL);
-    if (difftime(now, last_action_time) > UNDO_TIMEOUT || c == ' ')
-        pushUndo();
-    last_action_time = now;
-}
+/* ═══════════════════════════════════════════════════════════════
+   COPY  (ke clipboard Windows)
+   ═══════════════════════════════════════════════════════════════ */
 
-void insertChar(char c) {
-    checkUndoCondition(c);
-    Line *curr = getLineNode(cy);
-    int len = (int)strlen(curr->data);
-    if (len < MAX_LENGTH - 1) {
-        for (int i = len; i >= cx; i--)
-            curr->data[i + 1] = curr->data[i];
-        curr->data[cx] = c;
-        cx++;
-    }
-}
-
-void insertNewLine(void) {
-    pushUndo();
-    Line *curr = getLineNode(cy);
-
-    Line *node = (Line *)malloc(sizeof(Line));
-    strcpy(node->data, curr->data + cx);
-    curr->data[cx] = '\0';
-
-    node->next = curr->next;
-    node->prev = curr;
-    if (curr->next) curr->next->prev = node;
-    else            tail = node;
-    curr->next = node;
-
-    line_count++;
-    cy++;
-    cx = 0;
-    if (cy >= row_offset + VIEW_HEIGHT) row_offset++;
-    last_action_time = time(NULL);
-}
-
-void deleteChar(void) {
-    checkUndoCondition('\b');
-    Line *curr = getLineNode(cy);
-
-    if (cx > 0) {
-        int len = (int)strlen(curr->data);
-        for (int i = cx - 1; i < len; i++)
-            curr->data[i] = curr->data[i + 1];
-        cx--;
-    } else if (cy > 0) {
-        pushUndo();
-        Line *prev_line = curr->prev;
-        int   prev_len  = (int)strlen(prev_line->data);
-        strcat(prev_line->data, curr->data);
-
-        prev_line->next = curr->next;
-        if (curr->next) curr->next->prev = prev_line;
-        else            tail = prev_line;
-        free(curr);
-
-        cy--;
-        cx = prev_len;
-        line_count--;
-        if (cy < row_offset) row_offset--;
-    }
-}
-
-void copyLine(void) {
-    Line *curr = getLineNode(cy);
+/*
+ * copyLineToClipboard – salin isi baris saat ini ke clipboard Windows.
+ *
+ * Setelah ini user bisa Ctrl+V di Notepad, Word, dll.
+ *
+ * Cara kerja Windows Clipboard API:
+ *   1. GlobalAlloc  – alokasi memori global untuk data clipboard
+ *   2. GlobalLock   – kunci memori agar bisa ditulis
+ *   3. OpenClipboard / EmptyClipboard / SetClipboardData
+ *   4. CloseClipboard
+ */
+void copyLineToClipboard(void) {
+    Line *curr = getNode(cy);
     if (!curr) return;
 
-    if (clip_head) free(clip_head);
-    clip_head = (ClipboardNode *)malloc(sizeof(ClipboardNode));
-    strcpy(clip_head->data, curr->data);
-    clip_head->next = NULL;
+    int len = curr->len + 1; /* +1 untuk null terminator */
+
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, len);
+    if (!hMem) return;
+
+    char *buf = (char *)GlobalLock(hMem);
+    memcpy(buf, curr->data, len);
+    GlobalUnlock(hMem);
+
+    if (OpenClipboard(NULL)) {
+        EmptyClipboard();
+        SetClipboardData(CF_TEXT, hMem);
+        CloseClipboard();
+    } else {
+        GlobalFree(hMem); /* Gagal buka clipboard — bebaskan memori */
+    }
 }
 
-void pasteLine(void) {
-    if (!clip_head) return;
-    pushUndo();
+/* ═══════════════════════════════════════════════════════════════
+   PASTE  (dari clipboard Windows)
+   ═══════════════════════════════════════════════════════════════ */
 
-    Line *curr = getLineNode(cy);
-    Line *node = (Line *)malloc(sizeof(Line));
-    strcpy(node->data, clip_head->data);
+/*
+ * pasteFromClipboard – ambil teks dari clipboard dan sisipkan.
+ *
+ * Karakter '\r' (Windows line ending) dilewati.
+ * Karakter '\n' memicu insertNewLine (baris baru).
+ * Karakter lain disisipkan langsung tanpa snapshot spasi.
+ */
+void pasteFromClipboard(void) {
+    if (!IsClipboardFormatAvailable(CF_TEXT)) return;
+    if (!OpenClipboard(NULL)) return;
 
-    node->next = curr->next;
-    node->prev = curr;
-    if (curr->next) curr->next->prev = node;
-    else            tail = node;
-    curr->next = node;
+    HANDLE hData = GetClipboardData(CF_TEXT);
+    if (hData) {
+        char *text = (char *)GlobalLock(hData);
+        if (text) {
+            pushSnapshot(); /* Simpan kondisi sebelum paste */
 
-    line_count++;
-    cy++;
-    last_action_time = 0;
+            for (int i = 0; text[i] != '\0'; i++) {
+                if (text[i] == '\r') {
+                    continue;          /* Skip carriage return */
+                } else if (text[i] == '\n') {
+                    insertNewLine();   /* Buat baris baru */
+                } else {
+                    /* Sisipkan karakter langsung ke baris aktif */
+                    Line *ln = getNode(cy);
+                    ensureCap(ln, ln->len + 2);
+                    for (int j = ln->len; j >= cx; j--)
+                        ln->data[j + 1] = ln->data[j];
+                    ln->data[cx] = text[i];
+                    ln->len++;
+                    cx++;
+                }
+            }
+            GlobalUnlock(hData);
+        }
+    }
+    CloseClipboard();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   NEW FILE
+   ═══════════════════════════════════════════════════════════════ */
+
+/*
+ * newFile – bersihkan editor untuk memulai file baru.
+ *
+ * Kondisi sebelum: editor berisi teks apapun.
+ * Kondisi sesudah: satu baris kosong, semua posisi di-reset.
+ */
 void newFile(void) {
-    pushUndo();
-    freeLines();
+    pushSnapshot(); /* Simpan kondisi sekarang (bisa di-undo) */
+    freeList();     /* Hapus semua baris */
+    createList();   /* Buat list baru dengan satu baris kosong */
 
-    head = (Line *)malloc(sizeof(Line));
-    head->data[0] = '\0';
-    head->next    = NULL;
-    head->prev    = NULL;
-    tail = head;
-
-    line_count = 1;
     cx = cy = row_offset = 0;
     currentFile[0] = '\0';
 }
