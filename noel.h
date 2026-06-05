@@ -2,87 +2,73 @@
 #define NOEL_H
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 #include <conio.h>
-#include <windows.h>
+#include <windows.h> // Diperlukan untuk Clipboard Global Windows
 
-/* ═══════════════════════════════════════════════════════════════
-   KONSTANTA
-   ═══════════════════════════════════════════════════════════════ */
-#define VIEW_HEIGHT  20   /* Jumlah baris yang tampil di layar */
-#define INIT_CAP     64   /* Kapasitas awal buffer tiap baris */
+#define MAX_LENGTH  1024
+#define MAX_LINES   10000
+#define VIEW_HEIGHT 20
 
-/* ═══════════════════════════════════════════════════════════════
-   STRUKTUR: NODE BARIS  (Double Linked List)
+// ==========================================
+// KAMUS DATA / STRUKTUR DATA
+// ==========================================
 
-   Setiap baris teks = satu node. Node mengenal tetangga atas
-   (prev) dan bawah (next) sehingga kursor bisa bergerak dua arah.
-
-   NULL <- [Baris 0] <-> [Baris 1] <-> [Baris 2] -> NULL
-              ^head                        ^tail
-   ═══════════════════════════════════════════════════════════════ */
+// Node untuk Text Buffer (Double Linked List)
 typedef struct Line {
-    char        *data;   /* Isi teks baris — buffer dinamis */
-    int          len;    /* Panjang teks saat ini */
-    int          cap;    /* Ukuran buffer yang dialokasi */
-    struct Line *next;   /* Baris di bawah */
-    struct Line *prev;   /* Baris di atas */
+    char        data[MAX_LENGTH];
+    struct Line *prev;
+    struct Line *next;
 } Line;
 
-/* ═══════════════════════════════════════════════════════════════
-   STRUKTUR: SNAPSHOT  (Undo/Redo)
+// Node untuk Editor State (History Undo/Redo menggunakan Double Linked List)
+typedef struct UndoNode {
+    Line            *head_state; // Salinan utuh text buffer pada state tersebut
+    int             cx, cy;      // Posisi kursor pada state tersebut
+    struct UndoNode *prev;
+    struct UndoNode *next;
+} UndoNode;
 
-   Setiap snapshot = "foto" seluruh isi editor.
-   Snapshot-snapshot tersambung sebagai linked list:
+// Variabel Global (Extern)
+extern Line *head;
+extern Line *tail;
+extern Line *cursor_line;
 
-   [Snap0] <-> [Snap1] <-> [Snap2]
-                               ^--- history_cursor
-
-   Undo = geser cursor mundur | Redo = geser cursor maju
-   ═══════════════════════════════════════════════════════════════ */
-typedef struct Snapshot {
-    char **lines_data;        /* Salinan isi setiap baris */
-    int    line_count;        /* Jumlah baris */
-    int    cx, cy;            /* Posisi kursor */
-    struct Snapshot *prev;
-    struct Snapshot *next;
-} Snapshot;
-
-/* ─── Variabel Global ──────────────────────────────────────── */
-extern Line     *head;
-extern Line     *tail;
-extern Snapshot *history_cursor;
-
-extern int  line_count, cx, cy, row_offset, mode;
+extern int  line_count;
+extern int  cx, cy;
+extern int  row_offset;
+extern int  mode;
 extern char currentFile[100];
 
-/* ─── list.c : Operasi Linked List ────────────────────────── */
-Line *createList(void);                    /* Inisialisasi list kosong */
-Line *createNode(void);                    /* Buat satu node baris */
-void  insertList(int after_cy, char *txt); /* Sisipkan baris baru */
-void  deleteList(int target_cy);           /* Hapus satu baris */
-Line *getNode(int index);                  /* Ambil node ke-index */
-void  freeList(void);                      /* Bebaskan seluruh list */
-void  ensureCap(Line *ln, int needed);     /* Perbesar buffer jika perlu */
+// ==========================================
+// DAFTAR FUNGSI OPERASI TEXT EDITOR
+// ==========================================
 
-/* ─── noel.c : Fitur Editor ───────────────────────────────── */
-void pushSnapshot(void);
-void undoAction(void);
-void redoAction(void);
-void copyLineToClipboard(void);
-void pasteFromClipboard(void);
-void newFile(void);
+// 1. Alokasi & Manajemen Memori
+Line* createLine();
+Line* duplicateBuffer(Line *src_head);
+void freeTextBuffer(Line *target_head);
 
-/* ─── text.c : Operasi Teks ───────────────────────────────── */
+// 2. Operasi Dasar Linked List (Insert & Deletion)
 void insertChar(char c);
-void insertNewLine(void);
-void deleteChar(void);
+void insertNewLine();
+void mergeWithPrevLine();
+void deleteChar();
 
-/* ─── main.c : Tampilan ───────────────────────────────────── */
-void editorRefreshScreen(void);
+// 3. Traversal / Navigasi & Print
+Line* getLine(int n);
+void moveCursor(int key);
+void printLineWithCursor(Line *line, int fileRow);
+void editorRefreshScreen();
 
-/* ─── Utilitas ────────────────────────────────────────────── */
-char *str_dup(const char *s);
+// 4. Fitur Utama: Copy, Paste, Undo, Redo, New File
+void copyToClipboard();
+void pasteFromClipboard();
+void saveState();
+void undo();
+void redo();
+void clearEditorToNewFile();
+void freeUndoRedoHistory();
 
-#endif /* NOEL_H */
+#endif
