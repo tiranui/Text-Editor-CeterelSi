@@ -100,7 +100,7 @@ void editorRefreshScreen() {
     if (mode == 0) {
         printf("\033[KESC = Command Mode\n");
     } else {
-        /* Memperbarui petunjuk menu agar mencakup semua fitur baru */
+        
         printf("\033[K[I]:Edit   [O]:Open   [S]:Save   [A]:SaveAs   [C]:Close\n");
         printf("\033[K[F]:Find   [R]:Repl   [U]:Undo   [Y]:Redo     [N]:New\n");
         printf("\033[K[B]:Copy   [P]:Paste  [Q]:Quit\n");
@@ -267,6 +267,40 @@ void deleteChar() {
     }
 }
 
+
+int confirmQuit(void) {
+    char choice;
+
+    system("cls");
+
+    printf("===== KELUAR PROGRAM =====\n\n");
+    printf("Yakin ingin keluar?\n\n");
+    printf("  1. Yes        - Keluar TANPA simpan\n");
+    printf("  2. Save First - Simpan DULU, lalu keluar\n");
+    printf("  3. Cancel     - Batalkan\n");
+    printf("\nPilihan [1/2/3]: ");
+
+    choice = getch();
+    printf("%c\n", choice);
+
+    if (choice == '1') return 1;
+    
+    if (choice == '2') { 
+        
+        if (strlen(currentFile) == 0) {
+            printf("\nBelum ada nama file! Gunakan Save As [A] terlebih dahulu.\n");
+            system("pause");
+            return 0; 
+        }
+        
+        saveFile(); 
+        return 1; 
+    }
+
+
+    return 0; 
+}
+
 int main() {
     int key;
     head        = createLine();
@@ -274,7 +308,7 @@ int main() {
     cursor_line = head;
     line_count  = 1;
 
-    // Simpan state awal kosong agar bisa undo sampai bersih kembali
+    
     saveState();
 
     while (1) {
@@ -282,20 +316,20 @@ int main() {
         key = readKey();
 
         if (mode == 0) {
-            /* ------------------ EDIT MODE ------------------ */
+            
             if (key == 27) {
                 mode = 1;
             }
             else if (key == 13) {
-                saveState(); // Simpan riwayat sebelum membuat baris baru
+                saveState(); 
                 insertNewLine();
             }
             else if (key == 8) {
-                saveState(); // Simpan riwayat sebelum menghapus
+                saveState(); 
                 deleteChar();
             }
             else if (key >= 32 && key <= 126) {
-                saveState(); // Simpan riwayat sebelum menyisipkan karakter
+                saveState(); 
                 insertChar((char)key);
             }
             else {
@@ -303,16 +337,16 @@ int main() {
             }
 
         } else {
-            /* ----------------- COMMAND MODE ----------------- */
+            
             switch (key) {
                 case 'i': case 'I':
                     mode = 0;
                     break;
 
-                /* Fitur File Tambahan dari Rafli.h */
+                
                 case 'o': case 'O':
                     openFile();
-                    mode = 0; // Otomatis kembali ke Edit Mode setelah buka file
+                    mode = 0; 
                     break;
 
                 case 's': case 'S':
@@ -327,17 +361,17 @@ int main() {
                     closeFile();
                     break;
 
-                /* Fitur Pencarian dari Fauzan.h */
+                
                 case 'f': case 'F':
                     findText();
                     break;
 
                 case 'r': case 'R':
-                    saveState(); // Simpan state sebelum replace teks massal
+                    saveState(); 
                     replaceText();
                     break;
 
-                /* Fitur Riwayat & Clipboard dari noel.h */
+                
                 case 'n': case 'N':
                     clearEditorToNewFile();
                     break;
@@ -350,20 +384,24 @@ int main() {
                     redo();
                     break;
 
-                case 'b': case 'B': // Tombol B dipilih untuk fungsi Copy Clipboard
+                case 'b': case 'B': 
                     copyToClipboard();
                     break;
 
                 case 'p': case 'P':
-                    saveState(); // Simpan state sebelum menempelkan teks baru
+                    saveState(); 
                     pasteFromClipboard();
                     break;
 
-                case 'q': case 'Q':
-                    printf("\033[?25h");
-                    return 0;
-                    break;
+                  case 'q': case 'Q':
+                     if (confirmQuit()) {
+                    return 0; 
+                      }
+                     editorRefreshScreen(); 
+                     break;
+
             }
+
         }
     }
     return 0;
