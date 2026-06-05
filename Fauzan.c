@@ -88,6 +88,7 @@ void replaceText() {
 
     printf("Tekan tombol apa saja...");
     getch();
+<<<<<<< HEAD
 }
 #include "Fauzan.h"
 
@@ -179,4 +180,6 @@ void replaceText() {
 
     printf("Tekan tombol apa saja...");
     getch();
+=======
+>>>>>>> Rafli
 }

@@ -26,8 +26,7 @@ extern int  row_offset;
 extern int  mode;
 extern char currentFile[100];
 
-Line* createLine();
-Line* getLine(int n);
+
 
 void findText();
 void replaceText();
