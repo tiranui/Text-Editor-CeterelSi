@@ -93,10 +93,6 @@ Line* getLine(int n) {
     return curr;
 }
 
-<<<<<<< HEAD
-int readKey() {
-=======
->>>>>>> Rafli
 int readKey(void) {
     int c = getch();
 
@@ -259,7 +255,6 @@ void moveCursor(int key) {
         case ARROW_RIGHT:
             if (cx < (int)strlen(cursor_line->data)) cx++;
             break;
-
         case PAGE_UP: {
             int steps = VIEW_HEIGHT;
             while (steps-- > 0 && cy > 0) {
@@ -268,11 +263,7 @@ void moveCursor(int key) {
             }
             if (cy < 0) cy = 0;
             break;
-<<<<<<< HEAD
-
-=======
         }
->>>>>>> Rafli
         case PAGE_DOWN: {
             int steps = VIEW_HEIGHT;
             while (steps-- > 0 && cy < line_count - 1) {
@@ -281,16 +272,11 @@ void moveCursor(int key) {
             }
             if (cy >= line_count) cy = line_count - 1;
             break;
+        }
     }
     if (cx > (int)strlen(current->data))
         cx = (int)strlen(current->data);
 
-<<<<<<< HEAD
-    if (cx > (int)strlen(current->line))
-        cx = (int)strlen(current->line);
-
-=======
->>>>>>> Rafli
     if (cy < row_offset) row_offset = cy;
     if (cy >= row_offset + VIEW_HEIGHT) {
         row_offset = cy - VIEW_HEIGHT + 1;
@@ -371,25 +357,6 @@ void mergeWithPrevLine() {
 }
 
 
-<<<<<<< HEAD
-void deleteChar() {
-    int len = (int)strlen(cursor_line->data);
-    int i;
-
-    if (cx == 0) {
-        mergeWithPrevLine();
-    } else {
-        for (i = cx - 1; i < len; i++) {
-            cursor_line->data[i] = cursor_line->data[i + 1];
-        }
-        cx--;
-        cursor_line->data[len - 1] = '\0';
-    }
-}
-
-
-=======
->>>>>>> Rafli
 void deleteChar(void) {
     int len = (int)strlen(current->data);
     int i;
@@ -500,11 +467,6 @@ int main(void) {
                 case 's': case 'S':
                     saveFile();
                     break;
-<<<<<<< HEAD
-                case 'a': case 'A':  saveAs();               break;
-                case 'c': case 'C':  closeFile();            break;
-                   case 'q': case 'Q':
-=======
                 case 'a': case 'A':
                     saveAs();               
                     break;
@@ -512,7 +474,6 @@ int main(void) {
                     closeFile();            
                     break;
                 case 'q': case 'Q':
->>>>>>> Rafli
                     if (confirmQuit()) {
                         setCursorVisibility(1);
                         return 0;
