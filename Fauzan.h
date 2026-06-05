@@ -12,8 +12,8 @@
 
 typedef struct Line {
     char        data[MAX_LENGTH];
-    struct Line *prev;
-    struct Line *next;
+    struct Line *prev;            
+    struct Line *next;            
 } Line;
 
 extern Line *head;

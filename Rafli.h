@@ -7,32 +7,64 @@
 #include <conio.h>
 #include <windows.h>
 
-#define MAX_LENGTH  256
-#define VIEW_HEIGHT  20
+#include "Fauzan.h"
 
-typedef struct Node {
-    char line[MAX_LENGTH];
-    struct Node *next;
-    struct Node *prev;
-} Node;
+#ifdef FAUZAN_H
+    #define Node       Line
+    #define createNode createLine
 
-extern Node *head;
-extern Node *current;
-extern int   line_count;
-extern char  currentFile[100];
-extern int   cx, cy;
-extern int   row_offset;
-extern int   mode;
+    // deklarasi fungsi pakai Line langsung
+    extern Line *head;
+    extern Line *current;
+    extern int   line_count;
+    extern char  currentFile[100];
+    extern int   cx, cy;
+    extern int   row_offset;
+    extern int   mode;
 
-Node* createNode();
-Node* getNodeAt(int index);
-void  freeAllNodes();
+    Line* createNode();
+    Line* getNodeAt(int index);
+    void  freeAllNodes();
+    void  openFile();
+    void  closeFile();
+    void  saveFile();
+    void  saveAs();
+    void  clearScreen();
+    void  setCursorVisibility(int visible);
 
-void openFile();
-void closeFile();
-void saveFile();
-void saveAs();
-void clearScreen();
-void setCursorVisibility(int visible);
+#else
+    #ifndef MAX_LENGTH
+    #define MAX_LENGTH 256
+    #endif
+
+    #ifndef VIEW_HEIGHT
+    #define VIEW_HEIGHT 20
+    #endif
+
+    typedef struct Node {
+        char line[MAX_LENGTH];
+        struct Node *next;
+        struct Node *prev;
+    } Node;
+
+    extern Node *head;
+    extern Node *current;
+    extern int   line_count;
+    extern char  currentFile[100];
+    extern int   cx, cy;
+    extern int   row_offset;
+    extern int   mode;
+
+    Node* createNode();
+    Node* getNodeAt(int index);
+    void  freeAllNodes();
+    void  openFile();
+    void  closeFile();
+    void  saveFile();
+    void  saveAs();
+    void  clearScreen();
+    void  setCursorVisibility(int visible);
 
 #endif
+
+#endif // RAFLI_H

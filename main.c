@@ -93,7 +93,10 @@ Line* getLine(int n) {
     return curr;
 }
 
+<<<<<<< HEAD
 int readKey() {
+=======
+>>>>>>> Rafli
 int readKey(void) {
     int c = getch();
 
@@ -184,7 +187,7 @@ void editorRefreshScreen(void) {
         node = getNodeAt(fileRow);
         if (node == NULL) continue;
 
-        len = (int)strlen(node->line);
+        len = (int)strlen(node->data);
         col = 0;
 
         /* Nomor baris: "  N | " dengan warna dim */
@@ -204,7 +207,7 @@ void editorRefreshScreen(void) {
 
             /* Karakter teks biasa */
             if (j < len) {
-                scrPutChar(screenRow, col, node->line[j], CLR_NORMAL);
+                scrPutChar(screenRow, col, node->data[j], CLR_NORMAL);
                 col++;
             }
         }
@@ -265,7 +268,11 @@ void moveCursor(int key) {
             }
             if (cy < 0) cy = 0;
             break;
+<<<<<<< HEAD
 
+=======
+        }
+>>>>>>> Rafli
         case PAGE_DOWN: {
             int steps = VIEW_HEIGHT;
             while (steps-- > 0 && cy < line_count - 1) {
@@ -275,10 +282,15 @@ void moveCursor(int key) {
             if (cy >= line_count) cy = line_count - 1;
             break;
     }
+    if (cx > (int)strlen(current->data))
+        cx = (int)strlen(current->data);
 
+<<<<<<< HEAD
     if (cx > (int)strlen(current->line))
         cx = (int)strlen(current->line);
 
+=======
+>>>>>>> Rafli
     if (cy < row_offset) row_offset = cy;
     if (cy >= row_offset + VIEW_HEIGHT) {
         row_offset = cy - VIEW_HEIGHT + 1;
@@ -289,13 +301,13 @@ void moveCursor(int key) {
    EDIT TEKS
    ================================================================ */
 void insertChar(char c) {
-    int len = (int)strlen(current->line);
+    int len = (int)strlen(current->data);
     int i;
 
     if (len >= MAX_LENGTH - 1) return;
 
     for (i = len; i >= cx; i--)
-        current->line[i + 1] = current->line[i];
+        current->data[i + 1] = current->data[i];
 
     cursor_line->data[cx] = c;
     cx++;
@@ -303,7 +315,8 @@ void insertChar(char c) {
 }
 
 void insertNewLine(void) {
-    Node *newNode = createNode();
+    Line *newNode;
+    Line *nextNode;
 
     if (line_count >= MAX_LINES) return;
 
@@ -358,6 +371,7 @@ void mergeWithPrevLine() {
 }
 
 
+<<<<<<< HEAD
 void deleteChar() {
     int len = (int)strlen(cursor_line->data);
     int i;
@@ -374,22 +388,24 @@ void deleteChar() {
 }
 
 
+=======
+>>>>>>> Rafli
 void deleteChar(void) {
-    int len = (int)strlen(current->line);
+    int len = (int)strlen(current->data);
     int i;
 
     if (cx > 0) {
         for (i = cx - 1; i < len; i++)
-            current->line[i] = current->line[i + 1];
+            current->data[i] = current->data[i + 1];
         cx--;
 
     } else if (cy > 0) {
         Node *prev    = current->prev;
-        int   prevLen = (int)strlen(prev->line);
+        int   prevLen = (int)strlen(prev->data);
 
         if (prevLen + len < MAX_LENGTH - 1) {
             cx = prevLen;
-            strcat(prev->line, current->line);
+            strcat(prev->data, current->data);
 
             prev->next = current->next;
             if (current->next != NULL)
@@ -484,9 +500,19 @@ int main(void) {
                 case 's': case 'S':
                     saveFile();
                     break;
+<<<<<<< HEAD
                 case 'a': case 'A':  saveAs();               break;
                 case 'c': case 'C':  closeFile();            break;
                    case 'q': case 'Q':
+=======
+                case 'a': case 'A':
+                    saveAs();               
+                    break;
+                case 'c': case 'C':  
+                    closeFile();            
+                    break;
+                case 'q': case 'Q':
+>>>>>>> Rafli
                     if (confirmQuit()) {
                         setCursorVisibility(1);
                         return 0;
