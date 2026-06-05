@@ -1,3 +1,4 @@
+#include "Fauzan.h"
 #include "Rafli.h"
 
 Node* createNode() {
@@ -6,7 +7,7 @@ Node* createNode() {
         printf("ERROR: Memori penuh!\n");
         exit(1);
     }
-    newNode->line[0] = '\0';
+    newNode->data[0] = '\0';
     newNode->next    = NULL;
     newNode->prev    = NULL;
     return newNode;
@@ -71,7 +72,7 @@ void getUniqueFilename(char *filename, char *result) {
 void writeLinesToFile(FILE *fp) {
     Node *temp = head;
     while (temp != NULL) {
-        fprintf(fp, "%s\n", temp->line);
+        fprintf(fp, "%s\n", temp->data);
         temp = temp->next;
     }
 }
@@ -114,7 +115,7 @@ void openFile() {
     while (fgets(buffer, MAX_LENGTH, fp)) {
         buffer[strcspn(buffer, "\n")] = '\0';
         newNode = createNode();
-        strcpy(newNode->line, buffer);
+        strcpy(newNode->data, buffer);
 
         if (head == NULL) {
             head = newNode;

@@ -1,3 +1,4 @@
+#include "Fauzan.h"
 #include "Rafli.h"
 
 
@@ -72,8 +73,30 @@ enum keys {
     PAGE_DOWN
 };
 
+Line* createLine() {
+    Line *node = (Line*)malloc(sizeof(Line));
+    if (node == NULL) {
+        printf("ERROR: Gagal alokasi memori!\n");
+        exit(1);
+    }
+    node->data[0] = '\0';
+    node->prev    = NULL;
+    node->next    = NULL;
+    return node;
+}
+
+Line* getLine(int n) {
+    Line *curr = head;
+    int   i;
+    for (i = 0; i < n && curr != NULL; i++) {
+        curr = curr->next;
+    }
+    return curr;
+}
+
 int readKey(void) {
     int c = getch();
+
     if (c == 0 || c == 224) {
         int c2 = getch();
         switch (c2) {
@@ -85,6 +108,7 @@ int readKey(void) {
             case 81: return PAGE_DOWN;
         }
     }
+
     return c;
 }
 
@@ -160,7 +184,7 @@ void editorRefreshScreen(void) {
         node = getNodeAt(fileRow);
         if (node == NULL) continue;
 
-        len = (int)strlen(node->line);
+        len = (int)strlen(node->data);
         col = 0;
 
         /* Nomor baris: "  N | " dengan warna dim */
@@ -180,7 +204,7 @@ void editorRefreshScreen(void) {
 
             /* Karakter teks biasa */
             if (j < len) {
-                scrPutChar(screenRow, col, node->line[j], CLR_NORMAL);
+                scrPutChar(screenRow, col, node->data[j], CLR_NORMAL);
                 col++;
             }
         }
@@ -214,6 +238,8 @@ void editorRefreshScreen(void) {
    PERGERAKAN KURSOR
    ================================================================ */
 void moveCursor(int key) {
+    int i, steps;
+
     switch (key) {
         case ARROW_UP:
             if (cy > 0) { cy--; current = current->prev; }
@@ -228,7 +254,7 @@ void moveCursor(int key) {
             break;
 
         case ARROW_RIGHT:
-            if (cx < (int)strlen(current->line)) cx++;
+            if (cx < (int)strlen(cursor_line->data)) cx++;
             break;
 
         case PAGE_UP: {
@@ -237,52 +263,58 @@ void moveCursor(int key) {
                 cy--;
                 current = current->prev;
             }
+            if (cy < 0) cy = 0;
             break;
         }
-
         case PAGE_DOWN: {
             int steps = VIEW_HEIGHT;
             while (steps-- > 0 && cy < line_count - 1) {
                 cy++;
                 current = current->next;
             }
+            if (cy >= line_count) cy = line_count - 1;
             break;
         }
     }
+    if (cx > (int)strlen(current->data))
+        cx = (int)strlen(current->data);
 
-    if (cx > (int)strlen(current->line))
-        cx = (int)strlen(current->line);
-
-    if (cy < row_offset)
-        row_offset = cy;
-    if (cy >= row_offset + VIEW_HEIGHT)
+    if (cy < row_offset) row_offset = cy;
+    if (cy >= row_offset + VIEW_HEIGHT) {
         row_offset = cy - VIEW_HEIGHT + 1;
+    }
 }
 
 /* ================================================================
    EDIT TEKS
    ================================================================ */
 void insertChar(char c) {
-    int len = (int)strlen(current->line);
+    int len = (int)strlen(current->data);
     int i;
 
     if (len >= MAX_LENGTH - 1) return;
 
     for (i = len; i >= cx; i--)
-        current->line[i + 1] = current->line[i];
+        current->data[i + 1] = current->data[i];
 
-    current->line[cx] = c;
+    cursor_line->data[cx] = c;
     cx++;
+    cursor_line->data[len + 1] = '\0';
 }
 
 void insertNewLine(void) {
-    Node *newNode = createNode();
+    Line *newNode;
+    Line *nextNode;
 
-    strcpy(newNode->line, current->line + cx);
-    current->line[cx] = '\0';
+    if (line_count >= MAX_LINES) return;
 
-    newNode->next = current->next;
-    newNode->prev = current;
+    newNode  = createLine();
+    nextNode = cursor_line->next;
+    strcpy(newNode->data, cursor_line->data + cx);
+    cursor_line->data[cx] = '\0';
+    newNode->prev     = cursor_line;
+    newNode->next     = nextNode;
+    cursor_line->next = newNode;
 
     if (current->next != NULL)
         current->next->prev = newNode;
@@ -290,30 +322,59 @@ void insertNewLine(void) {
     current->next = newNode;
 
     line_count++;
+    cursor_line = newNode;
     cy++;
-    current = newNode;
-    cx = 0;
-
+    cx = 0; 
     if (cy >= row_offset + VIEW_HEIGHT)
         row_offset = cy - VIEW_HEIGHT + 1;
 }
 
+
+
+void mergeWithPrevLine() {
+    Line *prevNode = cursor_line->prev;
+    Line *nextNode = cursor_line->next;
+    int   prevLen;
+
+    if (prevNode == NULL) return;
+    prevLen = (int)strlen(prevNode->data);
+
+    if (prevLen + (int)strlen(cursor_line->data) >= MAX_LENGTH) return;
+
+    strcat(prevNode->data, cursor_line->data);
+    prevNode->next = nextNode;
+    if (nextNode != NULL) {
+        nextNode->prev = prevNode;
+    } else {
+        tail = prevNode;
+    }
+    free(cursor_line);
+
+    cursor_line = prevNode;
+    cx          = prevLen;
+    cy--;
+    line_count--;
+
+    if (cy < row_offset) row_offset = cy;
+}
+
+
 void deleteChar(void) {
-    int len = (int)strlen(current->line);
+    int len = (int)strlen(current->data);
     int i;
 
     if (cx > 0) {
         for (i = cx - 1; i < len; i++)
-            current->line[i] = current->line[i + 1];
+            current->data[i] = current->data[i + 1];
         cx--;
 
     } else if (cy > 0) {
         Node *prev    = current->prev;
-        int   prevLen = (int)strlen(prev->line);
+        int   prevLen = (int)strlen(prev->data);
 
         if (prevLen + len < MAX_LENGTH - 1) {
             cx = prevLen;
-            strcat(prev->line, current->line);
+            strcat(prev->data, current->data);
 
             prev->next = current->next;
             if (current->next != NULL)
@@ -372,19 +433,48 @@ int main(void) {
         key = readKey();
 
         if (mode == 0) {
-            if      (key == 27)               mode = 1;
-            else if (key == 13)               insertNewLine();
-            else if (key == 8)                deleteChar();
-            else if (key >= 32 && key <= 126) insertChar((char)key);
-            else                              moveCursor(key);
-
+            
+            if (key == 27){
+                mode = 1;
+            }               
+            else if (key == 13){
+                insertNewLine();
+            }               
+            else if (key == 8){
+                 deleteChar();
+            }               
+            else if (key >= 32 && key <= 126) {
+                insertChar((char)key);
+            }
+            else {
+                moveCursor(key);  
+            }                             
         } else {
             switch (key) {
-                case 'i': case 'I':  mode = 0;              break;
-                case 'o': case 'O':  openFile(); mode = 0;  break;
-                case 's': case 'S':  saveFile();             break;
-                case 'a': case 'A':  saveAs();               break;
-                case 'c': case 'C':  closeFile();            break;
+                case 'i': case 'I':
+                    mode = 0;
+                    break;
+
+                case 'f': case 'F':
+                    findText();
+                    break;
+
+                case 'r': case 'R':
+                    replaceText();
+                    break;
+                case 'o': case 'O':
+                    openFile();
+                    mode = 0;  
+                    break;
+                case 's': case 'S':
+                    saveFile();
+                    break;
+                case 'a': case 'A':
+                    saveAs();               
+                    break;
+                case 'c': case 'C':  
+                    closeFile();            
+                    break;
                 case 'q': case 'Q':
                     if (confirmQuit()) {
                         setCursorVisibility(1);
@@ -394,6 +484,5 @@ int main(void) {
             }
         }
     }
-
     return 0;
 }
