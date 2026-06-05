@@ -84,7 +84,7 @@ void openFile() {
     char  buffer[MAX_LENGTH];
 
     system("cls");
-    setCursorVisibility(1);
+    // setCursorVisibility(1);
 
     printf("===== BUKA FILE =====\n");
     printf("Nama file: ");
@@ -93,7 +93,7 @@ void openFile() {
     fgets(filename, sizeof(filename), stdin);
     filename[strcspn(filename, "\n")] = '\0';
 
-    setCursorVisibility(0);
+    // setCursorVisibility(0);
 
     if (strlen(filename) == 0) {
         printf("Nama file tidak boleh kosong!\n");
@@ -178,7 +178,7 @@ void saveAs() {
     FILE *fp;
 
     system("cls");
-    setCursorVisibility(1);
+    // setCursorVisibility(1);
 
     printf("===== SIMPAN SEBAGAI =====\n");
     printf("Nama file: ");
@@ -187,7 +187,7 @@ void saveAs() {
     fgets(filename, sizeof(filename), stdin);
     filename[strcspn(filename, "\n")] = '\0';
 
-    setCursorVisibility(0);
+    // setCursorVisibility(0);
 
     if (strlen(filename) == 0) {
         printf("Nama file tidak boleh kosong!\n");

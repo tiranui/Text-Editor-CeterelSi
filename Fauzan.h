@@ -5,6 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <conio.h>
+#include <windows.h>
 
 #define MAX_LENGTH  1024
 #define MAX_LINES   10000
@@ -16,6 +17,7 @@ typedef struct Line {
     struct Line *next;            
 } Line;
 
+/* Penggunaan EXTERN menjamin alokasi asli hanya ada di main.c */
 extern Line *head;
 extern Line *tail;
 extern Line *cursor_line;
@@ -25,8 +27,6 @@ extern int  cx, cy;
 extern int  row_offset;
 extern int  mode;
 extern char currentFile[100];
-
-
 
 void findText();
 void replaceText();

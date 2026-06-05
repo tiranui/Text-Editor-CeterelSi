@@ -6,6 +6,7 @@ void findText() {
     int   rowNum = 1;
     Line *curr;
 
+    system("cls");
     printf("\nMasukkan kata yang dicari: ");
     scanf("%s", keyword);
 
@@ -41,7 +42,6 @@ static void replaceAllInLine(char *line, const char *oldWord, const char *newWor
     buffer[0] = '\0';
 
     while ((pos = strstr(src, oldWord)) != NULL) {
-        // Salin bagian sebelum kata yang ditemukan
         partLen = (int)(pos - src);
         strncat(buffer, src, partLen);
         strcat(buffer, newWord);
@@ -49,7 +49,6 @@ static void replaceAllInLine(char *line, const char *oldWord, const char *newWor
     }
 
     strcat(buffer, src);
-
     strcpy(line, buffer);
 }
 
@@ -59,6 +58,7 @@ void replaceText() {
     Line *curr;
     char *check;
 
+    system("cls");
     printf("\nKata yang ingin diganti : ");
     scanf("%s", oldWord);
 
@@ -76,7 +76,6 @@ void replaceText() {
         }
 
         replaceAllInLine(curr->data, oldWord, newWord);
-
         curr = curr->next;
     }
 
