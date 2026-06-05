@@ -1,15 +1,67 @@
 #include "Fauzan.h"
+#include "Rafli.h"
 
-Line *head        = NULL;
-Line *tail        = NULL;
-Line *cursor_line = NULL;
+Node *head        = NULL;
+Node *current     = NULL;
+int   line_count  = 1;
+char  currentFile[100] = "";
+int   cx = 0, cy = 0;
+int   row_offset  = 0;
+int   mode        = 0;
 
-int  line_count = 1;
-int  cx = 0, cy = 0;
-int  row_offset = 0;
-int  mode       = 0;
 
-char currentFile[100] = "";
+#define SCR_W  60
+#define SCR_H  40
+
+
+static CHAR_INFO g_screen[SCR_H * SCR_W];
+
+
+#define CLR_NORMAL   0x07
+#define CLR_BRIGHT   0x0F
+#define CLR_DIM      0x08
+#define CLR_CURSOR   0x70
+
+
+static void scrClear(void) {
+    int i;
+    for (i = 0; i < SCR_H * SCR_W; i++) {
+        g_screen[i].Char.AsciiChar = ' ';
+        g_screen[i].Attributes     = CLR_NORMAL;
+    }
+}
+
+
+static void scrPutStr(int row, int col, const char *s, WORD attr) {
+    int idx;
+    while (*s && col < SCR_W) {
+        idx = row * SCR_W + col;
+        g_screen[idx].Char.AsciiChar = *s;
+        g_screen[idx].Attributes     = attr;
+        s++;
+        col++;
+    }
+}
+
+
+static void scrPutChar(int row, int col, char c, WORD attr) {
+    int idx;
+    if (row < 0 || row >= SCR_H || col < 0 || col >= SCR_W) return;
+    idx = row * SCR_W + col;
+    g_screen[idx].Char.AsciiChar = c;
+    g_screen[idx].Attributes     = attr;
+}
+
+
+ 
+static void scrFlush(void) {
+    HANDLE     h   = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD      sz  = { SCR_W,      SCR_H      };  /* ukuran buffer kita   */
+    COORD      org = { 0,          0          };  /* mulai baca dari [0,0]*/
+    SMALL_RECT reg = { 0, 0, SCR_W-1, SCR_H-1 }; /* tulis ke seluruh layar */
+    WriteConsoleOutputA(h, g_screen, sz, org, &reg);
+}
+
 
 enum keys {
     ARROW_UP    = 1000,
@@ -42,6 +94,7 @@ Line* getLine(int n) {
 }
 
 int readKey() {
+int readKey(void) {
     int c = getch();
 
     if (c == 0 || c == 224) {
@@ -59,82 +112,141 @@ int readKey() {
     return c;
 }
 
-void clearScreen() {
-    printf("\033[H");
+
+void clearScreen(void) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    DWORD  written;
+    COORD  home = {0, 0};
+    GetConsoleScreenBufferInfo(hOut, &csbi);
+    DWORD count = (DWORD)csbi.dwSize.X * csbi.dwSize.Y;
+    FillConsoleOutputCharacter(hOut, ' ', count, home, &written);
+    FillConsoleOutputAttribute(hOut, csbi.wAttributes, count, home, &written);
+    SetConsoleCursorPosition(hOut, home);
 }
 
-void printLineWithCursor(Line *line, int fileRow) {
-    int i;
-    int len = (int)strlen(line->data);
-
-    printf("\033[K  ");
-
-    for (i = 0; i < len; i++) {
-        if (fileRow == cy && i == cx) {
-            printf("|");
-        }
-        printf("%c", line->data[i]);
-    }
-
-    if (fileRow == cy && cx == len) {
-        printf("|");
-    }
-
-    printf("\n");
+void setCursorVisibility(int visible) {
+    HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO ci;
+    GetConsoleCursorInfo(hOut, &ci);
+    ci.bVisible = (BOOL)visible;
+    SetConsoleCursorInfo(hOut, &ci);
 }
 
-void editorRefreshScreen() {
-    int   i;
-    Line *line;
 
-    printf("\033[?25l");
-    clearScreen();
+void setConsoleSize(void) {
+    HANDLE     hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+    COORD      buf  = { SCR_W, SCR_H };
+    SMALL_RECT win  = { 0, 0, SCR_W - 1, SCR_H - 1 };
+    SetConsoleScreenBufferSize(hOut, buf);
+    SetConsoleWindowInfo(hOut, TRUE, &win);
+}
 
-    printf("\033[K===== MINI NOTEPAD =====\n");
-    printf("\033[KFile: %s\n", strlen(currentFile) ? currentFile : "(None)");
-    printf("\033[KMODE: %s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
-    printf("\033[K\n\033[K========================\n");
 
-    if (mode == 0) {
-        printf("\033[KESC = Command Mode\n");
-    } else {
-        printf("\033[KI: Edit   F: Find   R: Replace   Q: Quit\n");
-    }
+void editorRefreshScreen(void) {
+    int  i;
+    char tmp[SCR_W + 2];   /* buffer sprintf, +2 aman dari off-by-one */
 
-    printf("\033[K----------------------------------\n");
+    /* -- Kosongkan kanvas virtual -------------------------------- */
+    scrClear();
 
-    line = getLine(row_offset);
+    /* -- Baris 0-6: Header --------------------------------------- */
+    scrPutStr(0, 0, "============================================================", CLR_BRIGHT);
+    scrPutStr(1, 0, "                    MINI NOTEPAD                            ", CLR_BRIGHT);
+    scrPutStr(2, 0, "============================================================", CLR_BRIGHT);
 
+    /* Nama file: potong jika lebih dari 50 karakter */
+    sprintf(tmp, " File : %.50s", strlen(currentFile) ? currentFile : "(Belum ada)");
+    scrPutStr(3, 0, tmp, CLR_NORMAL);
+
+    sprintf(tmp, " Mode : %s", mode == 0 ? "[EDIT]" : "[COMMAND]");
+    scrPutStr(4, 0, tmp, CLR_NORMAL);
+
+    sprintf(tmp, " Brs  : %-5d  |  Kol : %-5d", cy + 1, cx + 1);
+    scrPutStr(5, 0, tmp, CLR_NORMAL);
+
+    scrPutStr(6, 0, "============================================================", CLR_BRIGHT);
+    /* Baris 7 sengaja kosong sebagai padding */
+
+    /* -- Baris 8–27: Konten teks (VIEW_HEIGHT = 20 baris) -------- */
     for (i = 0; i < VIEW_HEIGHT; i++) {
-        int fileRow = i + row_offset;
+        int   fileRow   = i + row_offset;
+        int   screenRow = 8 + i;
+        Node *node;
+        int   len, col, j;
 
-        if (fileRow >= line_count || line == NULL) {
-            printf("\033[K\n");
-        } else {
-            printLineWithCursor(line, fileRow);
-            line = line->next;
+        if (fileRow >= line_count) {
+            /* Baris melebihi isi file: tampilkan ~ */
+            scrPutChar(screenRow, 0, '~', CLR_DIM);
+            continue;
+        }
+
+        node = getNodeAt(fileRow);
+        if (node == NULL) continue;
+
+        len = (int)strlen(node->line);
+        col = 0;
+
+        /* Nomor baris: "  N | " dengan warna dim */
+        sprintf(tmp, "%3d | ", fileRow + 1);
+        scrPutStr(screenRow, 0, tmp, CLR_DIM);
+        col = 6;
+
+        /* Karakter teks satu per satu */
+        for (j = 0; j <= len; j++) {
+            if (col >= SCR_W) break;
+
+            if (fileRow == cy && j == cx) {
+                scrPutChar(screenRow, col, '|', CLR_CURSOR);
+                col++;
+                if (col >= SCR_W) break;
+            }
+
+            /* Karakter teks biasa */
+            if (j < len) {
+                scrPutChar(screenRow, col, node->line[j], CLR_NORMAL);
+                col++;
+            }
         }
     }
 
-    printf("\033[J");
-    fflush(stdout);
+    
+    if (mode == 0) {
+        scrPutStr(29, 0, " [ESC] Masuk Command Mode", CLR_NORMAL);
+    } else {
+        scrPutStr(29, 0, "============================================================", CLR_BRIGHT);
+        scrPutStr(30, 0, " [I] Edit       [O] Buka File      [S] Simpan", CLR_NORMAL);
+        scrPutStr(31, 0, " [A] Simpan Sebagai                [C] Tutup File", CLR_NORMAL);
+        scrPutStr(32, 0, " [Q] Keluar", CLR_NORMAL);
+        scrPutStr(33, 0, "============================================================", CLR_BRIGHT);
+    }
+
+    
+    scrFlush();
+
+    
+    if (mode == 0) {
+        COORD pos = {
+            (SHORT)(6 + cx),
+            (SHORT)(8 + (cy - row_offset))
+        };
+        SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), pos);
+    }
 }
+
+/* ================================================================
+   PERGERAKAN KURSOR
+   ================================================================ */
 void moveCursor(int key) {
     int i, steps;
 
     switch (key) {
         case ARROW_UP:
-            if (cursor_line->prev != NULL) {
-                cursor_line = cursor_line->prev;
-                cy--;
-            }
+            if (cy > 0) { cy--; current = current->prev; }
             break;
 
         case ARROW_DOWN:
-            if (cursor_line->next != NULL) {
-                cursor_line = cursor_line->next;
-                cy++;
-            }
+            if (cy < line_count - 1) { cy++; current = current->next; }
             break;
 
         case ARROW_LEFT:
@@ -145,56 +257,53 @@ void moveCursor(int key) {
             if (cx < (int)strlen(cursor_line->data)) cx++;
             break;
 
-        case PAGE_UP:
-            steps = VIEW_HEIGHT;
-            for (i = 0; i < steps; i++) {
-                if (cursor_line->prev != NULL) {
-                    cursor_line = cursor_line->prev;
-                    cy--;
-                } else break;
+        case PAGE_UP: {
+            int steps = VIEW_HEIGHT;
+            while (steps-- > 0 && cy > 0) {
+                cy--;
+                current = current->prev;
             }
             if (cy < 0) cy = 0;
             break;
 
-        case PAGE_DOWN:
-            steps = VIEW_HEIGHT;
-            for (i = 0; i < steps; i++) {
-                if (cursor_line->next != NULL) {
-                    cursor_line = cursor_line->next;
-                    cy++;
-                } else break;
+        case PAGE_DOWN: {
+            int steps = VIEW_HEIGHT;
+            while (steps-- > 0 && cy < line_count - 1) {
+                cy++;
+                current = current->next;
             }
             if (cy >= line_count) cy = line_count - 1;
             break;
     }
 
-    if (cx > (int)strlen(cursor_line->data)) {
-        cx = (int)strlen(cursor_line->data);
-    }
+    if (cx > (int)strlen(current->line))
+        cx = (int)strlen(current->line);
 
     if (cy < row_offset) row_offset = cy;
     if (cy >= row_offset + VIEW_HEIGHT) {
         row_offset = cy - VIEW_HEIGHT + 1;
     }
 }
+
+/* ================================================================
+   EDIT TEKS
+   ================================================================ */
 void insertChar(char c) {
-    int len = (int)strlen(cursor_line->data);
+    int len = (int)strlen(current->line);
     int i;
 
     if (len >= MAX_LENGTH - 1) return;
 
-    for (i = len; i >= cx; i--) {
-        cursor_line->data[i + 1] = cursor_line->data[i];
-    }
+    for (i = len; i >= cx; i--)
+        current->line[i + 1] = current->line[i];
 
     cursor_line->data[cx] = c;
     cx++;
     cursor_line->data[len + 1] = '\0';
 }
 
-void insertNewLine() {
-    Line *newNode;
-    Line *nextNode;
+void insertNewLine(void) {
+    Node *newNode = createNode();
 
     if (line_count >= MAX_LINES) return;
 
@@ -206,17 +315,19 @@ void insertNewLine() {
     newNode->next     = nextNode;
     cursor_line->next = newNode;
 
-    if (nextNode != NULL) {
-        nextNode->prev = newNode;
-    } else {
-        tail = newNode;
-    }
+    if (current->next != NULL)
+        current->next->prev = newNode;
+
+    current->next = newNode;
 
     line_count++;
     cursor_line = newNode;
     cy++;
-    cx = 0;
+    cx = 0; 
+    if (cy >= row_offset + VIEW_HEIGHT)
+        row_offset = cy - VIEW_HEIGHT + 1;
 }
+
 
 
 void mergeWithPrevLine() {
@@ -262,34 +373,97 @@ void deleteChar() {
     }
 }
 
-int main() {
+
+void deleteChar(void) {
+    int len = (int)strlen(current->line);
+    int i;
+
+    if (cx > 0) {
+        for (i = cx - 1; i < len; i++)
+            current->line[i] = current->line[i + 1];
+        cx--;
+
+    } else if (cy > 0) {
+        Node *prev    = current->prev;
+        int   prevLen = (int)strlen(prev->line);
+
+        if (prevLen + len < MAX_LENGTH - 1) {
+            cx = prevLen;
+            strcat(prev->line, current->line);
+
+            prev->next = current->next;
+            if (current->next != NULL)
+                current->next->prev = prev;
+
+            free(current);
+            current = prev;
+            cy--;
+            line_count--;
+
+            if (cy < row_offset) row_offset = cy;
+        }
+    }
+}
+
+/* ================================================================
+   KONFIRMASI QUIT
+   ================================================================ */
+int confirmQuit(void) {
+    char choice;
+
+    system("cls");
+    setCursorVisibility(1);
+
+    printf("===== KELUAR PROGRAM =====\n\n");
+    printf("Yakin ingin keluar?\n\n");
+    printf("  1. Yes        - Keluar TANPA simpan\n");
+    printf("  2. Save First - Simpan DULU, lalu keluar\n");
+    printf("  3. Cancel     - Batalkan\n");
+    printf("\nPilihan [1/2/3]: ");
+
+    choice = getch();
+    printf("%c\n", choice);
+
+    if (choice == '1') return 1;
+    if (choice == '2') { saveFile(); return 1; }
+
+    setCursorVisibility(0);
+    return 0;
+}
+
+/* ================================================================
+   MAIN
+   ================================================================ */
+int main(void) {
     int key;
-    head        = createLine();
-    tail        = head;
-    cursor_line = head;
-    line_count  = 1;
+
+    setConsoleSize();
+    setCursorVisibility(0);
+
+    head    = createNode();
+    current = head;
 
     while (1) {
         editorRefreshScreen();
         key = readKey();
 
         if (mode == 0) {
-            if (key == 27) {
+            
+            if (key == 27){
                 mode = 1;
-            }
-            else if (key == 13) {
+            }               
+            else if (key == 13){
                 insertNewLine();
-            }
-            else if (key == 8) {
-                deleteChar();
-            }
+            }               
+            else if (key == 8){
+                 deleteChar();
+            }               
             else if (key >= 32 && key <= 126) {
                 insertChar((char)key);
             }
             else {
-                moveCursor(key);
-            }
-
+                moveCursor(key);  
+            }                             
         } else {
             switch (key) {
                 case 'i': case 'I':
@@ -303,10 +477,21 @@ int main() {
                 case 'r': case 'R':
                     replaceText();
                     break;
-
-                case 'q': case 'Q':
-                    printf("\033[?25h");
-                    return 0;
+                case 'o': case 'O':
+                    openFile();
+                    mode = 0;  
+                    break;
+                case 's': case 'S':
+                    saveFile();
+                    break;
+                case 'a': case 'A':  saveAs();               break;
+                case 'c': case 'C':  closeFile();            break;
+                   case 'q': case 'Q':
+                    if (confirmQuit()) {
+                        setCursorVisibility(1);
+                        return 0;
+                    }
+                    break;
             }
         }
     }

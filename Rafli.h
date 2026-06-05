@@ -33,5 +33,6 @@ void closeFile();
 void saveFile();
 void saveAs();
 void clearScreen();
+void setCursorVisibility(int visible);
 
 #endif
