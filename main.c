@@ -249,59 +249,55 @@ void deleteChar() {
 
 int main() {
     int key;
-    // Jalankan inisialisasi New File pertama kali agar buffer & history siap pakai
     clearEditorToNewFile();
 
     while (1) {
         editorRefreshScreen();
         key = readKey();
 
-        if (mode == 0) { // MODE EDIT
-            if (key == 27) { // ESC -> Masuk ke Command Mode
+        if (mode == 0) {
+            if (key == 27) { // ESC: Ke Command Mode
+                saveState(); 
                 mode = 1;
             }
-            else if (key == 13) { // Enter
+            else if (key == 13) { // ENTER
                 saveState();
                 insertNewLine();
             }
-            else if (key == 8) { // Backspace
+            else if (key == 8) { // BACKSPACE
                 saveState();
                 deleteChar();
             }
-            else if (key == 32) { // Spasi
+            else if (key == 32) { // SPACE
                 saveState();
                 insertChar((char)key);
             }
-            else if (key >= 33 && key <= 126) { // Karakter tulisan biasa
+            else if (key >= 33 && key <= 126) { 
                 insertChar((char)key);
             }
             else {
                 moveCursor(key);
             }
         } 
-        else { // MODE COMMAND
+        else {
             switch (key) {
                 case 'i': case 'I':
-                    mode = 0; // Kembali ke Edit Mode
+                    mode = 0;
                     break;
                 case 'u': case 'U':
                     undo();
-                    // mode = 1; (Tetap bertahan di Command Mode)
                     break;
                 case 'r': case 'R':
                     redo();
-                    // mode = 1; (Tetap bertahan di Command Mode)
                     break;
                 case 'c': case 'C':
                     copyToClipboard();
-                    // mode = 1; (Tetap bertahan di Command Mode)
                     break;
                 case 'p': case 'P':
                     pasteFromClipboard();
-                    // mode = 1; (Tetap bertahan di Command Mode)
                     break;
                 case 'n': case 'N':
-                    clearEditorToNewFile(); // Otomatis balik ke edit dari fungsi internalnya
+                    clearEditorToNewFile();
                     break;
                 case 'q': case 'Q':
                     printf("\033[?25h");

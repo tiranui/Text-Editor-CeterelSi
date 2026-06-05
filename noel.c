@@ -1,12 +1,7 @@
 #include "noel.h"
 
-// Pointer untuk Riwayat Undo Redo (Double Linked List)
 UndoNode *history_head = NULL;
 UndoNode *history_curr = NULL;
-
-// ==========================================
-// ALOKASI & MANAJEMEN MEMORI UNDO/REDO
-// ==========================================
 
 Line* duplicateBuffer(Line *src_head) {
     if (src_head == NULL) return NULL;
@@ -53,12 +48,18 @@ void freeUndoRedoHistory() {
     history_curr = NULL;
 }
 
-// ==========================================
-// MEKANISME UNDO & REDO ENGINE
-// ==========================================
+int areBuffersEqual(Line *h1, Line *h2) {
+    while (h1 != NULL && h2 != NULL) {
+        if (strcmp(h1->data, h2->data) != 0) return 0;
+        h1 = h1->next;
+        h2 = h2->next;
+    }
+    return (h1 == NULL && h2 == NULL);
+}
 
 void saveState() {
-    // Jika kursor berada di tengah riwayat akibat undo, hapus sisa redo ke depan
+    if (head == NULL) return;
+
     if (history_curr != NULL && history_curr->next != NULL) {
         UndoNode *del = history_curr->next;
         while(del != NULL) {
@@ -68,6 +69,17 @@ void saveState() {
             del = next_del;
         }
         history_curr->next = NULL;
+    }
+
+    if (history_curr != NULL) {
+        Line *temp_dup = duplicateBuffer(head);
+        if (temp_dup != NULL && areBuffersEqual(temp_dup, history_curr->head_state)) {
+            history_curr->cx = cx;
+            history_curr->cy = cy;
+            freeTextBuffer(temp_dup);
+            return; 
+        }
+        if (temp_dup != NULL) freeTextBuffer(temp_dup);
     }
 
     UndoNode *node = (UndoNode*)malloc(sizeof(UndoNode));
@@ -87,15 +99,13 @@ void saveState() {
 
 void undo() {
     if (history_curr == NULL || history_curr->prev == NULL) {
-        return; // Tidak ada aksi untuk di-undo
+        return;
     }
     history_curr = history_curr->prev;
 
-    // Restore text buffer ke state sebelumnya
     freeTextBuffer(head);
     head = duplicateBuffer(history_curr->head_state);
     
-    // Sinkronisasi tail & cursor_line kembali ke posisi semula
     Line *curr = head;
     int current_row = 0;
     line_count = 1;
@@ -120,11 +130,10 @@ void undo() {
 
 void redo() {
     if (history_curr == NULL || history_curr->next == NULL) {
-        return; // Tidak ada aksi untuk di-redo
+        return;
     }
     history_curr = history_curr->next;
 
-    // Restore text buffer ke state setelahnya
     freeTextBuffer(head);
     head = duplicateBuffer(history_curr->head_state);
     
@@ -149,10 +158,6 @@ void redo() {
     cx = history_curr->cx;
     cy = history_curr->cy;
 }
-
-// ==========================================
-// FITUR GLOBAL COPY PASTE (WINDOWS API)
-// ==========================================
 
 void copyToClipboard() {
     if (cursor_line == NULL) return;
@@ -178,17 +183,43 @@ void pasteFromClipboard() {
         if (hClipboardData != NULL) {
             char *pchData = (char*)GlobalLock(hClipboardData);
             if (pchData != NULL) {
-                saveState(); // Simpan state sebelum menempel teks baru
+                saveState();
                 
+                char remainder[MAX_LENGTH];
+                strcpy(remainder, cursor_line->data + cx);
+                cursor_line->data[cx] = '\0'; 
+
                 int len = (int)strlen(pchData);
-                for (int i = 0; i < len; i++) {
-                    if (pchData[i] == '\n' || pchData[i] == '\r') {
+                int i; 
+                for (i = 0; i < len; i++) {
+                    // Proteksi: cegah luapan buffer jika char melampaui MAX_LENGTH
+                    if ((int)strlen(cursor_line->data) >= MAX_LENGTH - 1 && pchData[i] != '\n' && pchData[i] != '\r') {
+                        break; 
+                    }
+
+                    if (pchData[i] == '\r') {
+                        if (line_count >= MAX_LINES) break;
                         insertNewLine();
-                        if (pchData[i] == '\r' && pchData[i+1] == '\n') i++; 
+                        if (pchData[i+1] == '\n') i++;
+                    } else if (pchData[i] == '\n') {
+                        if (line_count >= MAX_LINES) break;
+                        insertNewLine();
                     } else {
                         insertChar(pchData[i]);
                     }
                 }
+                
+                // Menggabungkan kembali sisa baris teks dengan aman
+                if ((int)(strlen(cursor_line->data) + strlen(remainder)) < MAX_LENGTH) {
+                    strcat(cursor_line->data, remainder);
+                } else {
+                    int current_len = (int)strlen(cursor_line->data);
+                    int available = MAX_LENGTH - current_len - 1;
+                    if (available > 0) {
+                        strncat(cursor_line->data, remainder, available);
+                    }
+                }
+                
                 GlobalUnlock(hClipboardData);
             }
         }
@@ -196,16 +227,10 @@ void pasteFromClipboard() {
     }
 }
 
-// ==========================================
-// FITUR NEW FILE
-// ==========================================
-
 void clearEditorToNewFile() {
-    // Bersihkan buffer teks lama dan riwayat undo-redo
     freeTextBuffer(head);
     freeUndoRedoHistory();
 
-    // Reset total ke kondisi awal kosong
     head          = (Line*)malloc(sizeof(Line));
     head->data[0] = '\0';
     head->prev    = NULL;
@@ -217,9 +242,8 @@ void clearEditorToNewFile() {
     cx          = 0;
     cy          = 0;
     row_offset  = 0;
-    mode        = 0; // Pembuatan file baru akan mengembalikan ke mode edit secara default
+    mode        = 0;
     strcpy(currentFile, "");
 
-    // Simpan inisiasi awal ke dalam state history baru
     saveState();
 }
