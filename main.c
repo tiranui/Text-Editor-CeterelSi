@@ -1,16 +1,11 @@
 #include "Fauzan.h"
 #include "Rafli.h"
 
-<<<<<<< HEAD
-Node *head        = NULL;
-Node *current     = NULL;
-=======
 
 Line *head        = NULL;
 Line *cursor_line = NULL;
 Line *tail        = NULL;
 
->>>>>>> Rafli
 int   line_count  = 1;
 char  currentFile[100] = "";
 int   cx = 0, cy = 0;
