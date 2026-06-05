@@ -180,49 +180,67 @@ void copyToClipboard() {
 void pasteFromClipboard() {
     if (OpenClipboard(NULL)) {
         HANDLE hClipboardData = GetClipboardData(CF_TEXT);
+
         if (hClipboardData != NULL) {
             char *pchData = (char*)GlobalLock(hClipboardData);
+
             if (pchData != NULL) {
+
                 saveState();
-                
+
                 char remainder[MAX_LENGTH];
+
                 strcpy(remainder, cursor_line->data + cx);
-                cursor_line->data[cx] = '\0'; 
+                cursor_line->data[cx] = '\0';
 
                 int len = (int)strlen(pchData);
-                int i; 
+                int i;
+
                 for (i = 0; i < len; i++) {
-                    // Proteksi: cegah luapan buffer jika char melampaui MAX_LENGTH
-                    if ((int)strlen(cursor_line->data) >= MAX_LENGTH - 1 && pchData[i] != '\n' && pchData[i] != '\r') {
-                        break; 
-                    }
 
                     if (pchData[i] == '\r') {
-                        if (line_count >= MAX_LINES) break;
+
+                        if (line_count >= MAX_LINES)
+                            break;
+
                         insertNewLine();
-                        if (pchData[i+1] == '\n') i++;
-                    } else if (pchData[i] == '\n') {
-                        if (line_count >= MAX_LINES) break;
+
+                        if (pchData[i + 1] == '\n')
+                            i++;
+                    }
+                    else if (pchData[i] == '\n') {
+
+                        if (line_count >= MAX_LINES)
+                            break;
+
                         insertNewLine();
-                    } else {
+                    }
+                    else {
+
+                        /* Jika baris sudah penuh, hentikan paste */
+                        if ((int)strlen(cursor_line->data) >= MAX_LENGTH - 1)
+                            break;
+
                         insertChar(pchData[i]);
                     }
                 }
-                
-                // Menggabungkan kembali sisa baris teks dengan aman
-                if ((int)(strlen(cursor_line->data) + strlen(remainder)) < MAX_LENGTH) {
-                    strcat(cursor_line->data, remainder);
-                } else {
-                    int current_len = (int)strlen(cursor_line->data);
-                    int available = MAX_LENGTH - current_len - 1;
+
+                /* Kembalikan teks yang tadinya berada setelah cursor */
+                {
+                    int currentLen = (int)strlen(cursor_line->data);
+                    int available  = MAX_LENGTH - currentLen - 1;
+
                     if (available > 0) {
-                        strncat(cursor_line->data, remainder, available);
+                        strncat(cursor_line->data,
+                                remainder,
+                                available);
                     }
                 }
-                
+
                 GlobalUnlock(hClipboardData);
             }
         }
+
         CloseClipboard();
     }
 }

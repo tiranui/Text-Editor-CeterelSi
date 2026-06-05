@@ -85,7 +85,7 @@ void editorRefreshScreen() {
     printf("\033[?25l");
     clearScreen();
 
-    printf("\033[K===== MINI NOTEPAD PRO =====\n");
+    printf("\033[K===== NOTEPAD CETERELSI =====\n");
     printf("\033[KFile: %s\n", strlen(currentFile) ? currentFile : "(None)");
     printf("\033[KMODE: %s\n", mode == 0 ? "[EDIT]" : "[COMMAND]");
     printf("\033[K\n\033[K============================\n");
