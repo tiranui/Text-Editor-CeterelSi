@@ -2,15 +2,16 @@
 #include "Rafli.h"
 
 
-Node *head        = NULL;
-Node *current     = NULL;
+Line *head        = NULL;
+Line *cursor_line = NULL;
+Line *tail        = NULL;
+
 int   line_count  = 1;
 char  currentFile[100] = "";
 int   cx = 0, cy = 0;
 int   row_offset  = 0;
 int   mode        = 0;
-Line *tail        = NULL;
-Line *cursor_line = NULL;
+
 
 #define SCR_W  60
 #define SCR_H  40
@@ -298,7 +299,7 @@ void insertNewLine(void) {
 
     if (line_count >= MAX_LINES) return;
 
-    newNode  = createLine();
+    newNode  = createNode();
     nextNode = cursor_line->next;
     strcpy(newNode->data, cursor_line->data + cx);
     cursor_line->data[cx] = '\0';

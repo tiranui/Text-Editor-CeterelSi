@@ -11,8 +11,7 @@
 
 // Alias: Rafli.c pakai nama "Node" dan "createNode",
 // keduanya di-redirect ke Line dan createLine milik Fauzan
-#define Node       Line
-#define createNode createLine
+#define Node Line
 
 // "current" di Rafli.c = cursor_line di Fauzan.h
 #define current    cursor_line
@@ -27,6 +26,7 @@ extern int   row_offset;
 extern int   mode;
 
 Line* getNodeAt(int index);
+Node* createNode();
 void  freeAllNodes();
 void  openFile();
 void  closeFile();
