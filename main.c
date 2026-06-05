@@ -9,7 +9,8 @@ char  currentFile[100] = "";
 int   cx = 0, cy = 0;
 int   row_offset  = 0;
 int   mode        = 0;
-
+Line *tail        = NULL;
+Line *cursor_line = NULL;
 
 #define SCR_W  60
 #define SCR_H  40
@@ -73,17 +74,6 @@ enum keys {
     PAGE_DOWN
 };
 
-Line* createLine() {
-    Line *node = (Line*)malloc(sizeof(Line));
-    if (node == NULL) {
-        printf("ERROR: Gagal alokasi memori!\n");
-        exit(1);
-    }
-    node->data[0] = '\0';
-    node->prev    = NULL;
-    node->next    = NULL;
-    return node;
-}
 
 Line* getLine(int n) {
     Line *curr = head;
@@ -453,14 +443,6 @@ int main(void) {
             switch (key) {
                 case 'i': case 'I':
                     mode = 0;
-                    break;
-
-                case 'f': case 'F':
-                    findText();
-                    break;
-
-                case 'r': case 'R':
-                    replaceText();
                     break;
                 case 'o': case 'O':
                     openFile();

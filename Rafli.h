@@ -9,62 +9,30 @@
 
 #include "Fauzan.h"
 
-#ifdef FAUZAN_H
-    #define Node       Line
-    #define createNode createLine
+// Alias: Rafli.c pakai nama "Node" dan "createNode",
+// keduanya di-redirect ke Line dan createLine milik Fauzan
+#define Node       Line
+#define createNode createLine
 
-    // deklarasi fungsi pakai Line langsung
-    extern Line *head;
-    extern Line *current;
-    extern int   line_count;
-    extern char  currentFile[100];
-    extern int   cx, cy;
-    extern int   row_offset;
-    extern int   mode;
+// "current" di Rafli.c = cursor_line di Fauzan.h
+#define current    cursor_line
 
-    Line* createNode();
-    Line* getNodeAt(int index);
-    void  freeAllNodes();
-    void  openFile();
-    void  closeFile();
-    void  saveFile();
-    void  saveAs();
-    void  clearScreen();
-    void  setCursorVisibility(int visible);
+extern Line *head;
+extern Line *cursor_line;   // ini yang actual
+extern Line *tail;
+extern int   line_count;
+extern char  currentFile[100];
+extern int   cx, cy;
+extern int   row_offset;
+extern int   mode;
 
-#else
-    #ifndef MAX_LENGTH
-    #define MAX_LENGTH 256
-    #endif
-
-    #ifndef VIEW_HEIGHT
-    #define VIEW_HEIGHT 20
-    #endif
-
-    typedef struct Node {
-        char line[MAX_LENGTH];
-        struct Node *next;
-        struct Node *prev;
-    } Node;
-
-    extern Node *head;
-    extern Node *current;
-    extern int   line_count;
-    extern char  currentFile[100];
-    extern int   cx, cy;
-    extern int   row_offset;
-    extern int   mode;
-
-    Node* createNode();
-    Node* getNodeAt(int index);
-    void  freeAllNodes();
-    void  openFile();
-    void  closeFile();
-    void  saveFile();
-    void  saveAs();
-    void  clearScreen();
-    void  setCursorVisibility(int visible);
+Line* getNodeAt(int index);
+void  freeAllNodes();
+void  openFile();
+void  closeFile();
+void  saveFile();
+void  saveAs();
+void  clearScreen();
+void  setCursorVisibility(int visible);
 
 #endif
-
-#endif // RAFLI_H
